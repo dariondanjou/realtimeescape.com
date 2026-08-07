@@ -71,11 +71,13 @@ export default function HeroArt({ className = '' }: { className?: string }) {
           <stop offset="100%" stopColor="#e6946d" stopOpacity="0" />
         </radialGradient>
 
+        {/* SVG masks read LUMINANCE: white shows, black hides. The visible span must be white. */}
         <linearGradient id="fadeOut" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="60%" stopColor="#000" stopOpacity="1" />
-          <stop offset="100%" stopColor="#000" stopOpacity="0" />
+          <stop offset="0%" stopColor="#fff" stopOpacity="1" />
+          <stop offset="72%" stopColor="#fff" stopOpacity="1" />
+          <stop offset="100%" stopColor="#fff" stopOpacity="0" />
         </linearGradient>
-        <mask id="bottomFade">
+        <mask id="bottomFade" maskUnits="userSpaceOnUse" x="0" y="0" width="900" height="620">
           <rect x="0" y="0" width="900" height="620" fill="url(#fadeOut)" />
         </mask>
       </defs>
