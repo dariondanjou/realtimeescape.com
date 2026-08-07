@@ -80,6 +80,12 @@ export default function HeroArt({ className = '' }: { className?: string }) {
         <mask id="bottomFade" maskUnits="userSpaceOnUse" x="0" y="0" width="900" height="620">
           <rect x="0" y="0" width="900" height="620" fill="url(#fadeOut)" />
         </mask>
+
+        {/* Earth is a full circle larger than the aperture — clipped so it reads as a planet
+            seen THROUGH a window rather than a ball sitting in front of the bulkhead. */}
+        <clipPath id="windowClip">
+          <rect x="308" y="230" width="284" height="152" rx="6" />
+        </clipPath>
       </defs>
 
       <g mask="url(#bottomFade)">
@@ -101,28 +107,32 @@ export default function HeroArt({ className = '' }: { className?: string }) {
 
         {/* --- The window and Earth --- */}
         <g>
-          <rect x="308" y="230" width="284" height="152" rx="6" fill="#0a1725" />
-          {/* stars */}
-          <g fill="#cfe8f7">
-            <circle cx="340" cy="252" r="1.1" opacity="0.8" />
-            <circle cx="372" cy="300" r="0.9" opacity="0.6" />
-            <circle cx="560" cy="262" r="1.2" opacity="0.75" />
-            <circle cx="536" cy="342" r="0.8" opacity="0.5" />
-            <circle cx="410" cy="246" r="0.7" opacity="0.55" />
-            <circle cx="580" cy="318" r="0.9" opacity="0.6" />
+          <g clipPath="url(#windowClip)">
+            <rect x="308" y="230" width="284" height="152" fill="#050d18" />
+            {/* stars */}
+            <g fill="#cfe8f7">
+              <circle cx="340" cy="252" r="1.1" opacity="0.85" />
+              <circle cx="372" cy="296" r="0.9" opacity="0.65" />
+              <circle cx="560" cy="258" r="1.2" opacity="0.8" />
+              <circle cx="536" cy="286" r="0.8" opacity="0.55" />
+              <circle cx="410" cy="244" r="0.7" opacity="0.6" />
+              <circle cx="578" cy="312" r="0.9" opacity="0.6" />
+              <circle cx="330" cy="330" r="0.8" opacity="0.5" />
+              <circle cx="470" cy="248" r="0.7" opacity="0.45" />
+            </g>
+            {/* Earth limb, low and off-centre — the ship is already drifting */}
+            <circle cx="470" cy="416" r="128" fill="url(#earth)" />
+            <circle cx="470" cy="416" r="136" fill="url(#atmosphere)" />
+            {/* cloud banding, deliberately soft and non-literal */}
+            <g fill="#eaf7fd" opacity="0.28">
+              <ellipse cx="428" cy="330" rx="44" ry="8" />
+              <ellipse cx="516" cy="352" rx="32" ry="6" />
+              <ellipse cx="452" cy="368" rx="56" ry="7" />
+            </g>
           </g>
-          {/* Earth limb, sitting low and off-centre — the ship is drifting */}
-          <circle cx="470" cy="372" r="132" fill="url(#earth)" />
-          <circle cx="470" cy="372" r="140" fill="url(#atmosphere)" />
-          {/* cloud banding, deliberately soft and non-literal */}
-          <g fill="#dff2fb" opacity="0.22">
-            <ellipse cx="432" cy="318" rx="46" ry="9" />
-            <ellipse cx="512" cy="340" rx="34" ry="7" />
-            <ellipse cx="452" cy="356" rx="58" ry="8" />
-          </g>
-          <rect x="308" y="230" width="284" height="152" rx="6" fill="none" stroke="#8fabc4" strokeWidth="3" />
+          <rect x="308" y="230" width="284" height="152" rx="6" fill="none" stroke="#9db8cd" strokeWidth="3.5" />
           {/* multi-layer glazing seal — shared ship detail from the visual bible */}
-          <rect x="313" y="235" width="274" height="142" rx="4" fill="none" stroke="#b9d2e4" strokeWidth="1" opacity="0.5" />
+          <rect x="313" y="235" width="274" height="142" rx="4" fill="none" stroke="#cfe4f2" strokeWidth="1" opacity="0.55" />
         </g>
 
         {/* Cold light washing back into the room from the window */}
@@ -196,8 +206,10 @@ export default function HeroArt({ className = '' }: { className?: string }) {
 
         {/* --- Floor reflection: the room, doubled --- */}
         <g transform="translate(0,808) scale(1,-1)" opacity="0.34">
-          <rect x="308" y="230" width="284" height="152" rx="6" fill="#0e2438" />
-          <circle cx="470" cy="372" r="132" fill="url(#earth)" opacity="0.72" />
+          <rect x="308" y="230" width="284" height="152" rx="6" fill="#081726" />
+          <g clipPath="url(#windowClip)">
+            <circle cx="470" cy="416" r="128" fill="url(#earth)" opacity="0.72" />
+          </g>
           {[
             { y: 132, r: 13 },
             { y: 168, r: 10 },
