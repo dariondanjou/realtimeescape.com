@@ -204,20 +204,21 @@ export default function HeroArt({ className = '' }: { className?: string }) {
           <rect x="452" y="393" width="5" height="13" fill="#c3d7e8" />
         </g>
 
-        {/* --- Floor reflection: the room, doubled --- */}
-        <g transform="translate(0,808) scale(1,-1)" opacity="0.34">
-          <rect x="308" y="230" width="284" height="152" rx="6" fill="#081726" />
+        {/* --- Floor reflection ---
+            Kept soft and partial. A literal mirror image reads as a second window rather than a
+            polished floor; what sells it is the light bleeding down, not the geometry. */}
+        <g transform="translate(0,808) scale(1,-1)" opacity="0.2">
           <g clipPath="url(#windowClip)">
-            <circle cx="470" cy="416" r="128" fill="url(#earth)" opacity="0.72" />
+            <rect x="308" y="230" width="284" height="152" fill="#4a9fd0" opacity="0.5" />
           </g>
           {[
             { y: 132, r: 13 },
             { y: 168, r: 10 },
             { y: 194, r: 7.5 },
           ].map((l, i) => (
-            <circle key={i} cx="450" cy={l.y} r={l.r * 2.6} fill="url(#lamp)" opacity="0.4" />
+            <circle key={i} cx="450" cy={l.y} r={l.r * 2.8} fill="url(#lamp)" opacity="0.5" />
           ))}
-          <circle cx="450" cy="360" r="8" fill="#c9dced" opacity="0.6" />
+          <ellipse cx="450" cy="360" rx="7" ry="22" fill="#c9dced" opacity="0.5" />
         </g>
         <polygon points="0,620 280,404 620,404 900,620" fill="url(#reflection)" />
 
