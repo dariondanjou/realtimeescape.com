@@ -1,0 +1,2081 @@
+REALTIMEESCAPE.COM
+MASTER BUSINESS, PRODUCT, GAME AND TECHNICAL BUILD BRIEF
+
+First release: BURN WINDOW
+Version: 0.2
+Date: August 7, 2026
+Primary implementation agent: Claude Fable 5 / Claude Code
+
+
+======================================================================
+0. PURPOSE OF THIS DOCUMENT
+======================================================================
+
+This document is the working source of truth for building RealTimeEscape.com and its first commercial game, Burn Window. It consolidates the strongest ideas from prior ChatGPT, Claude and Gemini planning while resolving contradictions and removing ideas that are stale, unreliable, unnecessarily expensive or inconsistent with the product vision.
+
+Claude Fable 5 should treat the decisions labeled REQUIRED as product constraints. Recommendations may be refined during implementation, but major architectural changes should be recorded as explicit architecture decisions rather than silently introduced.
+
+
+CORE REQUIRED DECISIONS
+
+1. Brand/business: RealTimeEscape.com.
+2. First game: Burn Window.
+3. Product: browser-based, real-time, multiplayer 3D escape rooms.
+4. Burn Window duration: 60 minutes.
+5. Business model: paid digital event, initially approximately $20 per player.
+6. No download or dedicated game client is required.
+7. Every player has an independent camera/view of the same synchronized world.
+8. Other players appear as 3D avatars inside that world.
+9. Real-time player voice communication is built into the experience.
+10. Normal customer sessions must be completely self-operated. There is NO live Game Master, remote human host, human clue giver or staff member required to start, run, complete, fail, recover or debrief a game.
+11. Narrative guidance and hints are automated. They may use prerecorded cinematic/audio clips, deterministic game logic and an AI operator voice, but a live human can never be a gameplay dependency.
+12. The authoritative game state lives on the server. Clients render and predict locally but do not decide canonical puzzle state.
+13. Puzzle logic must become data-driven so new games can be produced without rewriting the platform.
+14. Desktop/laptop browser gameplay is the V1 target. The commerce, account and invitation pages should be mobile-friendly, but full phone gameplay is not a V1 requirement.
+15. V1 is private-group play. Public matchmaking with strangers is deferred.
+16. Burn Window should be excellent before the company attempts a rapid room-release cadence.
+
+
+======================================================================
+1. PRODUCT VISION
+======================================================================
+
+RealTimeEscape.com is a catalog of cinematic multiplayer escape rooms that feel like scheduled live events but run entirely in software.
+
+The core fantasy is: "My friends and I entered the same place together, even though we were physically in different places, and what each of us did changed the world for everyone else in real time."
+
+The product combines:
+
+- The time pressure and social ritual of a physical escape room.
+- The tactile exploration of a 3D first-person puzzle game.
+- The convenience of a URL and browser.
+- Private multiplayer from anywhere in the world.
+- Live party voice.
+- Independent viewpoints and asymmetric information.
+- Impossible/dangerous scenarios that physical rooms cannot safely stage.
+- Automated operation without a paid human host per session.
+- A reusable room engine that supports a growing catalog.
+- Pre-game story material and post-game media that extend the experience beyond the 60-minute room.
+
+RealTimeEscape should NOT feel like a collection of web puzzles pasted onto a video call. The 3D environment is the game. Players should move through it, examine it, manipulate it and see one another acting inside it.
+
+
+CORE DIFFERENTIATORS
+
+A. SAME WORLD, DIFFERENT EYES
+Each player independently moves and looks around. Player A can be in the cockpit while Player B is in an engineering compartment and Player C is crawling toward a thruster station. The game server maintains one shared reality.
+
+B. COMMUNICATION AS A GAME MECHANIC
+Some clues should deliberately be separated across people or locations. Nobody has all of the information. Speaking to teammates is part of solving the room rather than merely a convenience.
+
+C. SOFTWARE-ONLY LIVE EVENT
+A scheduled game still feels like an appointment with friends, but there is no physical room to reserve and no employee needed to operate the session. Many private team instances can run at the same clock time, subject only to scalable computing capacity.
+
+D. CINEMATIC WORLDS PHYSICAL ROOMS CANNOT BUILD
+Spaceflight, zero gravity, collapsing environments, underwater facilities, dangerous machinery, other planets and similar scenarios become practical.
+
+E. REUSABLE ENGINE + ROOM PACKAGES
+The company is not supposed to write a new multiplayer application for every release. RealTimeEscape is an engine. Burn Window is the first content package running on it.
+
+
+======================================================================
+2. FIRST GAME: BURN WINDOW
+======================================================================
+
+TITLE
+Burn Window
+
+FORMAT
+Real-time multiplayer 3D escape-room thriller.
+
+DURATION
+60 minutes from incident/start to closure of the return window.
+
+PLAYER COUNT
+Recommended: 4-6.
+Initial supported target: 3-8.
+
+The signature ending requires at least one cockpit/navigation player and multiple separated manual-thruster operators. Supporting two players would require compromising that idea or designing a special two-player variant. Do not compromise the core final mechanic merely to claim a two-player minimum. The platform can support other player counts in future rooms.
+
+
+PREMISE
+
+A group of civilian space travelers awaken aboard a civilian passenger spacecraft. Their flight was supposed to be controlled by professional astronauts. Something has happened while the passengers were incapacitated/asleep/unaware.
+
+The spacecraft is now drifting away from Earth.
+
+The passengers begin inside the civilian viewing/passenger room and cannot simply walk into the cockpit. They must first escape that compartment and discover what has happened.
+
+When they eventually reach the cockpit, the professional astronaut crew appear to be dead. Their bodies are floating in the cockpit.
+
+The ship is outside its intended trajectory. The passengers have sixty minutes before the ship passes the final maneuver window from which it can still be redirected into a recoverable Earth orbit/return trajectory.
+
+Automated systems cannot complete the required correction normally. The passengers must restore access to navigation, determine the required maneuver and then physically separate across the spacecraft.
+
+One or more players remain in the cockpit and become the navigation team. Other players travel to separated manual thruster/engineering stations. The cockpit can see information the thruster operators cannot see. The thruster operators can manipulate controls that the cockpit cannot physically operate.
+
+The final correction requires coordinated manual burns at multiple locations. The cockpit navigator tells separated operators what to set, which thrusters to arm, when to burn and for how long. Multiple players must execute the maneuver within a synchronization tolerance while everyone communicates by voice.
+
+They either establish the correct return vector before the Burn Window closes, or the ship passes beyond the recovery window.
+
+
+CREATIVE NORTH STAR
+
+Burn Window should feel like the players unexpectedly became the flight crew.
+
+The strongest emotional progression is:
+
+tourism -> confusion -> discovery -> horror -> responsibility -> separation -> frantic teamwork -> coordinated burn -> relief or irreversible drift.
+
+The cause of the astronaut deaths does not need to be decided by the platform architecture. Preserve room for later story development instead of hard-coding an explanation prematurely.
+
+
+RECOMMENDED 60-MINUTE DRAMATIC STRUCTURE
+
+ACT I - WAKE / ESCAPE THE CIVILIAN VIEWING ROOM (approximately first 10-15 minutes)
+
+- Players orient themselves and one another.
+- The viewing room establishes Earth/space visually and the civilian tourism setting.
+- Normal access is unavailable.
+- Players discover the first evidence that something is seriously wrong.
+- Cooperative inspection/puzzles restore emergency access or open the passenger compartment.
+- Ship status begins revealing that the spacecraft is off course.
+
+ACT II - REACH THE COCKPIT / DISCOVER THE CREW (approximately 15-30 minutes)
+
+- Players move through crew/service spaces.
+- They overcome access restrictions and damaged/disabled systems.
+- The cockpit is opened.
+- The floating dead astronauts are revealed.
+- Navigation data establishes the actual stakes: the return maneuver window is closing.
+- Players recover enough flight-control capability to learn that an automatic correction cannot be completed.
+
+ACT III - DIAGNOSE / PREPARE THE MANUAL BURN (approximately 30-45 minutes)
+
+- Players determine which systems and thrusters remain usable.
+- Required manual access points become available.
+- Players gather/transfer tools, codes or configuration information.
+- The team deliberately splits into navigation and separated engineering/thruster roles.
+- The game makes it obvious that nobody can solve the ending alone.
+
+ACT IV - THE BURN (approximately 45-60 minutes, or earlier if the team is fast)
+
+- Cockpit players receive or derive the required burn vector/sequence.
+- Thruster players see physical control panels, valves, interlocks and manual ignition controls.
+- Cockpit tells each location how to configure its station.
+- Cockpit can see global readiness indicators but cannot directly operate those stations.
+- Thruster operators can see their local machinery but do not receive the complete navigation answer.
+- Operators must execute one or more synchronized burns.
+- A mistimed/incorrect burn should usually trigger recalculation or a recoverable setback rather than an immediate hard fail. Failure costs precious time.
+- Final successful burn updates the trajectory and launches a cinematic Earth-return/orbit-success beat.
+
+
+FINAL-BURN SESSION RANDOMIZATION
+
+The exact final burn instructions should be server-generated from a validated set/seed for each session. This makes communication genuine and reduces the value of simply looking up a walkthrough. Randomization must never create an impossible configuration.
+
+Examples of variables that can safely vary after validation:
+
+- Thruster IDs.
+- Power percentages/settings.
+- Arming order.
+- Burn duration.
+- Which station performs which stage.
+- Symbol/color/code mappings, provided accessibility alternatives exist.
+
+The server remains authoritative about timing and successful execution.
+
+
+PLAYER ROLES IN BURN WINDOW
+
+Roles should emerge naturally rather than become restrictive classes:
+
+- Navigator/cockpit lead.
+- Cockpit systems support.
+- Port/manual-thruster operator.
+- Starboard/manual-thruster operator.
+- Engineering/utility support.
+- Runner/investigator.
+
+Players should be able to switch jobs. If someone disconnects, the game must be able to redistribute necessary information or provide a recovery path. No puzzle should become permanently unsolvable because a specific account/avatar disappeared.
+
+
+MOVEMENT AND MICROGRAVITY RECOMMENDATION
+
+Floating astronaut bodies can communicate microgravity without forcing casual users to learn a six-degree-of-freedom space simulator. A recommended fiction/mechanic is emergency magnetic footwear/floor attachment for active passengers while unsecured objects/bodies float. This preserves normal, accessible movement. Treat this as a creative recommendation, not locked canon.
+
+Floating bodies should use deterministic animation/controlled physics where possible. Do not waste multiplayer bandwidth synchronizing unnecessary corpse physics every frame.
+
+
+======================================================================
+3. ZERO-HOST PRINCIPLE: NO LIVE HUMAN GAME MASTER
+======================================================================
+
+This is a defining business and product constraint.
+
+A normal RealTimeEscape session must be able to:
+
+- Accept payment.
+- Provision seats.
+- Send invitations.
+- Open the lobby.
+- Test connection/audio.
+- Start itself.
+- Play narrative briefing.
+- Track every puzzle.
+- Detect progress.
+- Give hints.
+- Answer approved gameplay questions.
+- Handle common reconnections.
+- Determine win/loss.
+- Produce the debrief.
+- Deliver post-game media/results.
+- Issue an automated recovery credit/reschedule path after a qualifying technical failure.
+
+No staff member should have to be online.
+
+The business may have developers, customer support and administrators, but a paid customer session must never DEPEND on one of them being present in real time.
+
+
+AI OPERATOR MODEL
+
+Each room can have an in-fiction automated voice/operator. In Burn Window this could naturally be a damaged ship assistance system, emergency flight computer or similar character. Final naming/personality is a creative decision.
+
+The operator is NOT allowed to become the source of canonical puzzle truth.
+
+Architecture:
+
+1. Game server knows exact canonical session/puzzle state.
+2. Deterministic Hint Engine decides which unsolved puzzle is eligible for help and which hint tier is appropriate.
+3. Room content contains authored facts, solution data and 3-stage hint ladders.
+4. AI may select/rephrase approved information in the operator's voice.
+5. TTS produces dynamic speech when appropriate.
+6. Major narrative moments should generally use polished prerecorded audio/video for reliability and cinematic consistency.
+7. If an LLM, speech or TTS service is unavailable, the same canonical hint/instruction appears as deterministic text and/or a prerecorded fallback. A paid game must remain completable.
+
+AI operator responsibilities may include:
+
+- Welcome/briefing.
+- Rules.
+- Mission/context reminders.
+- State-aware hints.
+- Repeating information already legitimately discovered.
+- Explaining controls.
+- Telling players what a UI indicator means.
+- Notifying the team about time milestones.
+- Confirming system readiness.
+- Delivering success/failure/debrief lines.
+- Optional state-grounded spoken Q&A.
+
+The operator should NOT freely invent puzzle solutions, alter game state, create arbitrary new rules or hallucinate objects that do not exist.
+
+To minimize cost and reduce failure modes, do not assume a continuously reasoning LLM must remain active for all 60 minutes. Most session behavior can be state-driven. Invoke AI when useful.
+
+
+======================================================================
+4. CUSTOMER EXPERIENCE FROM DISCOVERY THROUGH AFTERCARE
+======================================================================
+
+4.1 DISCOVERY
+
+RealTimeEscape.com presents a cinematic catalog of games.
+
+Each game card eventually includes:
+
+- Title.
+- Trailer/hero visual.
+- Short premise.
+- Duration.
+- Recommended and supported player count.
+- Difficulty.
+- Intensity/horror level where relevant.
+- Price per player.
+- Supported device/browser guidance.
+
+For launch there is one flagship paid game: Burn Window.
+
+
+4.2 PLAY NOW VS SCHEDULE
+
+Primary options:
+
+PLAY NOW - creates an instant PRIVATE lobby and a shareable invitation link.
+
+SCHEDULE - selects a future date/time for a PRIVATE group.
+
+Do not build stranger/public matchmaking into V1. It adds moderation, abuse, no-show and social-quality problems that are unrelated to proving the core business.
+
+There is no artificial single physical time-slot inventory. Multiple isolated team sessions can begin at the same time. Infrastructure still has real capacity and must scale horizontally; do not describe it internally as literally infinite.
+
+
+4.3 PAYMENT
+
+Use Stripe Checkout.
+
+Support two clear purchase patterns:
+
+A. Host pays for all seats.
+B. Host pays/claims a seat and sends a secure invitation allowing friends to pay for their own seats.
+
+Stripe webhooks, not the client redirect alone, provision paid access.
+
+Every invite/seat maps to a booking and eventually to a game-session participant.
+
+
+4.4 PRE-GAME ANTICIPATION
+
+Scheduled games can extend the story before game day.
+
+Burn Window possibilities:
+
+- Digital boarding pass.
+- Civilian orbital-tour itinerary.
+- Passenger safety video.
+- Space-tourism brochure.
+- Departure manifest/profile.
+- Countdown email.
+- Nonessential lore/evidence.
+
+Pre-game material should enrich immersion but not contain mandatory puzzle information. Nobody who ignores an email should enter at an unfair disadvantage.
+
+
+4.5 LOBBY
+
+Lobby opens approximately 15 minutes before a scheduled game.
+
+Functions:
+
+- See who has joined.
+- Confirm paid/claimed seats.
+- Avatar selection.
+- Microphone/speaker test.
+- Browser/GPU test.
+- Network quality test.
+- Navigation/control tutorial.
+- Ready state.
+- Team voice.
+
+Burn Window can make the lobby diegetic without building a totally separate environment. One attractive option is to let players gather calmly in the civilian viewing room before the incident begins. They practice movement and see one another. When everyone is ready, the actual story event occurs, the state changes and the 60-minute clock starts.
+
+
+4.6 BRIEFING AND START
+
+Use a prerecorded, polished story sequence for the main opening.
+
+At start:
+
+- Lock final participant roster for gameplay scaling.
+- Assign/rebalance role-specific information if used.
+- Create deterministic random seed.
+- Start canonical server timer.
+- Transition room state.
+- Begin event logging.
+
+
+4.7 GAMEPLAY
+
+Players explore, communicate, solve, separate, recombine and eventually execute the return maneuver.
+
+The 60-minute timer is server-authoritative.
+
+
+4.8 SUCCESS OR FAILURE
+
+Success:
+
+- Burn completes.
+- Navigation confirms valid Earth-return/recovery orbit.
+- Cinematic payoff.
+- Completion time/hints recorded.
+
+Failure:
+
+- Burn Window reaches zero without valid trajectory.
+- Narrative failure ending still provides a satisfying cinematic conclusion rather than simply displaying a red failure screen.
+
+
+4.9 DEBRIEF
+
+Show:
+
+- Team result.
+- Time remaining or final progress.
+- Hints used.
+- Major puzzle milestones.
+- Team/room photo.
+- Achievements if implemented.
+- Share action.
+- Next-game/waitlist action.
+
+
+4.10 AFTERCARE
+
+Immediately send:
+
+- Results link.
+- Free team image/certificate.
+- Share link.
+- Referral/next-room offer when appropriate.
+
+Later paid add-ons can include a cinematic highlight reel or expanded media pack.
+
+
+======================================================================
+5. GAMEPLAY INTERFACE AND PLAYER CONTROLS
+======================================================================
+
+NAVIGATION MODE A - CLASSIC
+
+- WASD.
+- Arrow-key alternatives.
+- Mouse look.
+- Click/keyboard interaction.
+- Remappable keys where practical.
+- Gamepad later/optional.
+
+
+NAVIGATION MODE B - GUIDED / CASUAL
+
+- Click a valid floor/location.
+- NavMesh routes avatar there.
+- Click an interactable and optionally auto-approach the correct interaction point.
+- Drag/look around without requiring FPS muscle memory.
+
+Avoid calling this "teleportation" for normal desktop mode if the avatar visibly walks; smooth auto-navigation preserves the shared-world illusion for other players.
+
+
+FOCUS/INSPECTION MODE
+
+Clicking an inspectable object can move the local camera into a controlled view where the player can:
+
+- Rotate object.
+- Zoom.
+- Read.
+- Press controls.
+- Manipulate dials.
+- Combine/use items.
+
+
+CONTEXTUAL MOVEMENT
+
+Do not require complex key combinations for traversal such as vents, ladders or tight spaces.
+
+Example:
+
+CRAWL INSIDE
+
+The game transitions the avatar/camera to the contextual state and changes controls appropriately.
+
+
+FOLLOW TEAMMATE
+
+For casual players, selecting a teammate can provide a FOLLOW action that auto-navigates toward them when a path exists.
+
+
+PING
+
+Players can mark a location/object so teammates receive a temporary world-space/directional indicator.
+
+
+PLAYER COLLISION
+
+Remote avatars should not physically trap or block teammates. Avoid griefing through player-body collisions. Avatars very close to the local camera can fade/ghost.
+
+
+======================================================================
+6. INVENTORY, NOTES AND CLUE SYSTEM
+======================================================================
+
+PERSONAL POCKET
+
+A limited private/held-object inventory for a small number of items. Items remain canonical server objects even when represented in UI.
+
+
+TEAM EVIDENCE TRAY / COMMUNAL INVENTORY
+
+A synchronized shared inventory where everyone can see discovered team objects.
+
+Functions:
+
+- Inspect an object.
+- See who is currently using/holding it.
+- Transfer/drop/place where puzzle rules allow.
+- Pin an object/clue to the team board.
+
+
+PERSONAL NOTEBOOK
+
+Each player can type private notes. Notes can be explicitly shared to the team board.
+
+
+TEAM CLUE BOARD
+
+A synchronized board that can contain:
+
+- Discovered documents.
+- Screenshots/clue snapshots generated by the game.
+- Symbols.
+- Numbers.
+- Images.
+- Shared text notes.
+- Pinned inventory objects/references.
+
+The board should be useful without becoming a second game that distracts from the 3D environment.
+
+
+======================================================================
+7. ASYMMETRIC MULTIPLAYER
+======================================================================
+
+This should become a signature RealTimeEscape design tool.
+
+The engine should support visibility/information rules such as:
+
+- One role sees a blacklight/alternate visual layer.
+- One player receives an audio cue another does not.
+- A cockpit screen displays instructions unavailable at the thruster station.
+- One location contains half a cipher while another contains the key.
+- Different controls must be manipulated simultaneously.
+- A player can describe an object another player must configure elsewhere.
+
+This is especially central to Burn Window. The cockpit and manual-thruster stations should intentionally have complementary information and controls.
+
+
+======================================================================
+8. TECHNICAL ARCHITECTURE - DECISIONS
+======================================================================
+
+LANGUAGE / WEB STACK
+
+- TypeScript throughout the main platform/game networking code where practical.
+- React / Next.js for web application, commerce, account, lobby and HTML HUD surfaces.
+- Prefer a monorepo and shared typed protocol packages.
+
+
+3D ENGINE - REQUIRED INITIAL CHOICE
+
+Babylon.js.
+
+Use WebGPU when available and retain WebGL2 fallback for browser/device coverage.
+
+Reasoning:
+
+- Browser-native JavaScript/TypeScript workflow.
+- PBR rendering.
+- WebGPU/WebGL support.
+- glTF pipeline.
+- Scene picking.
+- Animation.
+- Physics/Havok support when needed.
+- Character-controller/game-engine functionality.
+- Better fit than a renderer-only library when an AI coding agent is building a reusable game platform.
+
+Three.js remains a credible alternative but should not be substituted casually after implementation begins. PlayCanvas is also credible, especially for visual authoring, but Babylon is the V1 architectural decision.
+
+Do not use Unreal Pixel Streaming for the normal V1 player experience. Its server-side GPU/render-stream cost and independent-view requirements work against the low-marginal-cost business model.
+
+
+MULTIPLAYER SERVER
+
+Colyseus on Node.js/TypeScript.
+
+One private team session maps to a Colyseus Room instance.
+
+Server owns canonical:
+
+- Session phase.
+- Timer.
+- Player membership.
+- Player transforms subject to validation.
+- Interactive-object state.
+- Object ownership/leases.
+- Inventory.
+- Doors/locks.
+- Puzzle state.
+- Hint state.
+- Randomization seed.
+- Burn Window final maneuver state.
+- Win/loss.
+
+
+VOICE
+
+LiveKit / WebRTC.
+
+IMPORTANT BURN WINDOW DECISION:
+Do NOT aggressively attenuate teammate voices merely because players physically separate inside the ship. The final game mechanic depends on cockpit-to-thruster communication. Default experience is effectively a party/intercom channel in which teammates remain intelligible.
+
+Light stereo/spatial positioning may be used for presence if it never undermines communication. Other future rooms can deliberately use proximity voice if their puzzle design calls for it.
+
+
+PERSISTENT APPLICATION DATA
+
+Supabase/PostgreSQL is the preferred low-ops initial choice for:
+
+- Accounts/authentication.
+- Profiles.
+- Bookings.
+- Seats/invitations.
+- Game catalog/version metadata.
+- Payments/entitlements references.
+- Persistent session results.
+- Checkpoints.
+- Analytics summaries.
+- Media artifact metadata.
+
+Do not write per-frame multiplayer transforms to Postgres.
+
+
+EPHEMERAL/PRESENCE/SCALE DATA
+
+Use Colyseus' supported presence/scaling approach and Redis when horizontal multi-process/multi-node scaling requires it. Do not introduce Redis solely because architecture diagrams traditionally contain Redis.
+
+
+PAYMENTS
+
+Stripe Checkout + server-side webhooks.
+
+Reuse proven Stripe knowledge/patterns from the user's prior projects where code is actually available, but do not couple RealTimeEscape to an unrelated application's database or secrets.
+
+
+ASSET STORAGE / DELIVERY
+
+Cloudflare R2 behind appropriate HTTP/CDN delivery is the preferred V1 asset store for large game assets because large read-heavy 3D content benefits from object storage economics.
+
+Store:
+
+- GLB/glTF assets.
+- Compressed textures.
+- Audio.
+- Prerecorded video/cinematics.
+- Room-package versions.
+- Generated post-game artifacts.
+
+
+FRONTEND HOSTING
+
+Vercel is a reasonable initial deployment target for the Next.js application. The architecture should not make the game logic dependent on Vercel-specific runtime behavior.
+
+
+EMAIL
+
+Use a transactional email provider with templates for invitation, confirmation, reminders, case-file drops and post-game results. Provider can be selected during implementation.
+
+
+OBSERVABILITY
+
+Use structured logs, error reporting, session health metrics and product analytics. Provider choice can be lightweight initially.
+
+
+======================================================================
+9. AUTHORITATIVE MULTIPLAYER MODEL
+======================================================================
+
+CLIENTS RENDER; SERVER DECIDES REALITY.
+
+Example object interaction:
+
+1. Player approaches object.
+2. Client requests pickup/interact.
+3. Server validates eligibility/proximity/state.
+4. Server grants a temporary ownership lease or rejects action.
+5. Canonical object state changes on server.
+6. Other clients receive state patch.
+7. Remote clients interpolate visual changes.
+
+
+OBJECT LEASES
+
+Only one player should manipulate an exclusive object at a time unless the puzzle explicitly supports multi-user manipulation. An interaction lease avoids two players simultaneously owning the same key/lever.
+
+
+PLAYER MOTION
+
+Local movement must feel immediate. Use client prediction/local motion and synchronize sufficiently for a puzzle game. Remote avatar positions can be interpolated. Do not send/render every skeletal bone across the network.
+
+Initial target networking cadence can be approximately 10-20 authoritative movement updates/second, then tune from actual testing.
+
+
+ANIMATION SYNC
+
+Synchronize high-level state:
+
+- Idle.
+- Walk/run.
+- Crouch/crawl.
+- Inspect/use.
+- Hold/carry.
+- Contextual traversal.
+
+Each client plays the animation locally.
+
+
+DISCRETE PUZZLE EVENTS
+
+Puzzle state changes should generally be discrete server events/state transitions rather than continuous physics simulation. This is more reliable and much easier to validate.
+
+
+CHECKPOINTS
+
+Persist canonical snapshots periodically and at major puzzle milestones. A reasonable starting point is every major state transition plus an interval such as 30 seconds, tuned after testing. Checkpoints are for recovery; Postgres is not the real-time game loop.
+
+
+RECONNECTION
+
+A returning paid participant should reclaim the same session seat/avatar and current canonical world state.
+
+Individual network loss normally does not stop the team timer. A verified platform/server failure can trigger automated pause/recovery policy.
+
+
+======================================================================
+10. 3D ART AND PHOTOREALISM PIPELINE
+======================================================================
+
+PRIMARY PIPELINE
+
+Concept/reference -> Blender environment/asset assembly -> PBR material work -> baked lighting/GI -> optimization -> glTF/GLB -> texture/mesh compression -> CDN -> Babylon.
+
+
+WHY BAKED LIGHTING MATTERS
+
+Escape rooms are unusually friendly to high-quality baked lighting because they are enclosed environments with mostly static architecture. Spend rendering time during content creation rather than asking every player's browser to calculate expensive global illumination in real time.
+
+Use dynamic lights only where gameplay or moving sources need them.
+
+
+VISUAL TOOLS/TECHNIQUES
+
+- Physically based materials.
+- High-quality normal/roughness/metalness maps.
+- Baked indirect lighting/lightmaps.
+- HDR/IBL/environment reflection where appropriate.
+- Reflection probes/environment maps.
+- Carefully budgeted real-time shadows.
+- Ambient occlusion.
+- Tonemapping.
+- Restrained bloom/postprocessing.
+- LODs.
+- Occlusion/culling.
+- Instancing for repeated props.
+- KTX2/Basis compressed textures.
+- Meshopt or Draco where testing shows a win.
+- Progressive/section-based loading.
+
+
+QUALITY TIERS
+
+Automatic Low / Medium / High / Ultra profiles based on lobby/device test.
+
+The room art remains the same; expensive features, resolution, shadow settings and texture detail adapt.
+
+
+INITIAL PERFORMANCE TARGETS
+
+Treat these as engineering goals to test, not marketing promises:
+
+- 30 FPS minimum acceptable gameplay on supported baseline desktop hardware.
+- 60 FPS target on stronger supported hardware.
+- Keep the first playable payload small enough that broadband users are not staring at a blank loading screen. A working initial engineering budget is <= approximately 75 MB before the opening experience becomes interactive, with additional room sections streamed/preloaded afterward.
+- Aim to keep a complete first-room streamed asset package on the order of a few hundred MB or less, then optimize using real device telemetry.
+
+Use the cinematic/lobby period intelligently to preload likely next assets.
+
+
+AI-GENERATED 3D CONTENT
+
+Midjourney/image models are useful for concept art, mood boards, decals and texture reference. Meshy/Tripo/Luma-style 3D generation can be experimented with for secondary props or prototyping.
+
+Do not rely on raw generative 3D output for hero environment assets without topology, UV, material, collision and performance review in Blender. The visual quality of Burn Window is one of the product's main marketing assets.
+
+
+REQUIRED LOCAL AESTHETIC REFERENCE ANALYSIS BEFORE VISUAL DEVELOPMENT
+
+Claude Code/Fable is REQUIRED to inspect the user-provided local folder named:
+
+reference-aesthetic
+
+This folder is expected to contain image reference sets/files identified by names corresponding to:
+
+- andor
+- andor-colorpalette
+- moonknight
+- moonknight-colorpalette
+
+File extensions, numbering and exact filename suffixes may vary. Claude should locate the matching local image assets when it is operating in the project environment that contains them.
+
+Do not replace these references with generic internet searches or with remembered ideas about Andor or Moon Knight. The user's LOCAL screenshots and palette images are the canonical aesthetic references for Burn Window visual development.
+
+The purpose is inspiration and extraction of a visual language, NOT a literal recreation of copyrighted sets, logos, props or exact production designs. Build an original RealTimeEscape spacecraft that inherits the selected visual properties.
+
+
+STRICT LOCATION-TO-REFERENCE MAPPING
+
+SPACESHIP COCKPIT / FLIGHT DECK
+Primary reference: local andor image set.
+Palette reference: local andor-colorpalette image/set.
+
+The Andor references should inform the cockpit's:
+
+- Color architecture.
+- Lighting and practical-light behavior.
+- Exposure and contrast.
+- Production-design density.
+- Material choices.
+- Industrial/technological character.
+- Display/interface integration.
+- Spatial composition.
+- Camera placement.
+- Apparent lens choices.
+- Depth of field.
+- Framing.
+- Atmosphere/haze if evidenced by the supplied screenshots.
+
+
+INITIAL CIVILIAN PASSENGER VIEWING ROOM
+Primary reference: local moonknight image set.
+Palette reference: local moonknight-colorpalette image/set.
+
+The Moon Knight references should inform the passenger viewing room's:
+
+- Color architecture.
+- Lighting and practical-light behavior.
+- Exposure and contrast.
+- Material palette.
+- Architectural mood.
+- Comfort/luxury versus unease.
+- Spatial composition.
+- Camera placement.
+- Apparent lens choices.
+- Depth of field.
+- Framing.
+- Atmosphere if evidenced by the supplied screenshots.
+
+Do not accidentally reverse these mappings. Andor = cockpit. Moon Knight = initial passenger viewing room.
+
+
+VISUAL-REFERENCE ANALYSIS PROCEDURE
+
+Before generating location concept images or committing to final environment art, Claude/Fable should analyze the local references and create:
+
+BURN_WINDOW_VISUAL_BIBLE.md
+
+This visual bible becomes the prompt/art-direction source of truth for Burn Window.
+
+The analysis must be evidence-based from the supplied files and should contain the following for EACH location.
+
+
+A. SAMPLED COLOR PALETTE
+
+Do not merely write adjectives such as "cool" or "warm."
+
+Extract practical palette values from the screenshots/palette files, using image sampling or a color-extraction method where available.
+
+Record approximately 6-12 useful colors per environment, including where evidenced:
+
+- Dominant background/base.
+- Secondary architectural tone.
+- Deep shadow/black level.
+- Light neutral.
+- Metal/material neutral.
+- Warm practical.
+- Cool practical.
+- Accent color(s).
+- Warning/emergency color if appropriate.
+- Skin/environment separation tone where visually relevant.
+
+Record RGB and/or HEX values. When multiple screenshots vary because of grading or exposure, derive a representative working palette rather than pretending one sampled pixel defines the entire location.
+
+Also record approximate color relationships:
+
+- Warm/cool balance.
+- Saturation level.
+- Highlight hue.
+- Shadow hue.
+- Neutral bias.
+- Contrast between practical lights and environment.
+
+The explicit local `andor-colorpalette` and `moonknight-colorpalette` assets should be treated as strong user-supplied palette guidance and reconciled with what is visible in the corresponding screenshots.
+
+
+B. LIGHTING / EXPOSURE DNA
+
+For each reference group document:
+
+- Primary motivated light sources.
+- Directionality.
+- Hard versus soft character.
+- Key-to-fill relationship.
+- Shadow density.
+- Highlight rolloff.
+- Whether blacks are crushed, rich-but-detailed or lifted.
+- Practical light brightness relative to the room.
+- Back/rim light behavior.
+- Reflections/specular highlights.
+- Haze/volumetrics if actually visible.
+- Approximate perceived color temperature relationships.
+- Day/night/interior-source cues.
+- Whether faces/subjects are allowed to fall into shadow.
+
+Translate those observations into actionable Blender/Babylon lighting guidance rather than stopping at film-language description.
+
+
+C. CAMERA AND LENS DNA
+
+Extract the visual camera language from the screenshots so it can be carried into generated concept images and later cinematics.
+
+For every useful reference frame record, when visually supportable:
+
+- Apparent lens category: ultra-wide, wide, normal, short telephoto or telephoto.
+- Approximate full-frame-equivalent focal-length RANGE, not fake precision.
+- Camera-to-subject distance impression.
+- Camera height.
+- Horizontal versus low/high angle.
+- Perspective exaggeration or compression.
+- Foreground/midground/background layering.
+- Edge distortion.
+- Apparent depth of field.
+- Approximate aperture CHARACTER (deep focus versus shallow), without inventing a precise f-stop unless metadata actually provides it.
+- Bokeh character if visible.
+- Spherical versus anamorphic visual cues if genuinely supported by the image.
+- Flare/halation characteristics if visible.
+- Symmetry versus asymmetry.
+- Centered versus off-center framing.
+- Negative-space behavior.
+- Headroom and horizon tendencies.
+- How architecture is allowed to dominate or frame people.
+
+IMPORTANT: screenshots usually do not contain enough information to identify an exact physical lens, camera body, T-stop or cinematographer setting. If EXIF/metadata is available, record it. Otherwise label focal lengths/lens properties as VISUAL ESTIMATES. Do not fabricate exact technical metadata.
+
+Likewise, do not infer camera movement (handheld, dolly, Steadicam, etc.) from a still screenshot unless additional source material actually establishes movement. The stills can reliably establish framing/perspective more than movement.
+
+
+D. COMPOSITION / PRODUCTION-DESIGN DNA
+
+Document:
+
+- Architectural shapes.
+- Spatial density.
+- Ceiling/floor/wall relationships.
+- Repetition/modularity.
+- Visible construction logic.
+- Window/view placement.
+- Use of depth corridors/frames-within-frames.
+- Screen/control density.
+- Prop density.
+- Material families.
+- Clean versus worn condition.
+- Surface roughness/specularity impression.
+- Graphic/signage restraint.
+- Negative space.
+- Human scale relative to machinery/architecture.
+
+Translate these into original Burn Window design principles. Avoid literal copying of recognizable reference-set geometry.
+
+
+E. IMAGE-GENERATION PROMPT SPECIFICATION
+
+After extracting the visual DNA, create prompt-ready specifications for each Burn Window environment.
+
+Every visual-development prompt for these locations should be constructed from this order:
+
+1. Original Burn Window location/function.
+2. Original architectural/spatial design description.
+3. Extracted palette with useful HEX/RGB anchors.
+4. Lighting/exposure behavior.
+5. Materials/surface treatment.
+6. Camera position and composition.
+7. Apparent focal-length/lens range.
+8. Depth-of-field characteristics.
+9. Atmosphere/postprocessing.
+10. Photorealism/production-design quality target.
+11. Negative constraints preventing unwanted aesthetic drift.
+
+Do not reduce a prompt to "Andor style" or "Moon Knight style." The point of the visual bible is to convert the supplied references into independent, descriptive, technically actionable aesthetic attributes.
+
+
+F. LOCATION-SPECIFIC PROMPT BLOCKS
+
+The visual bible should end with two reusable blocks:
+
+COCKPIT VISUAL DNA - derived from the supplied Andor references.
+
+PASSENGER VIEWING ROOM VISUAL DNA - derived from the supplied Moon Knight references.
+
+These blocks should be suitable for direct insertion into concept-art/image-generation prompts and should include palette, lighting, camera/lens and material language.
+
+
+G. VISUAL CONTINUITY BETWEEN THE TWO ROOMS
+
+The two references intentionally give the two locations different visual personalities, but they still belong to ONE spacecraft.
+
+After studying both reference groups, define a small shared spacecraft design language that bridges them without erasing their differences. Possible categories to unify after inspecting the references include:
+
+- Recurring base metal/polymer.
+- Shared door construction.
+- Emergency lighting color.
+- Typeface/signage logic.
+- Fastener/panel language.
+- Window material.
+- Repeating trim/accent.
+- Common ship-system iconography created specifically for Burn Window.
+
+The passenger viewing room can feel designed for civilians while the cockpit feels operational/industrial, but moving from one to the other must feel like entering a different functional zone of the same vehicle.
+
+
+H. STORY-STATE VISUAL VARIANTS
+
+Where useful, define at least two states for major environments:
+
+NORMAL/PRE-INCIDENT STATE
+The version seen in lobby/pre-flight material or before the emergency is fully understood.
+
+EMERGENCY/BURN-WINDOW STATE
+The same production design under story-pressure conditions: changed practicals, alarms, reduced systems, emergency indicators, floating debris/bodies where appropriate, etc.
+
+The emergency state should evolve from the extracted visual language rather than replacing it with generic red sci-fi emergency lighting.
+
+
+VISUAL-DEVELOPMENT GATE
+
+Do not begin bulk concept-image prompting for the Burn Window cockpit or passenger viewing room until `BURN_WINDOW_VISUAL_BIBLE.md` has been created from the local references and the two location-specific visual DNA blocks exist.
+
+If any expected reference group is genuinely absent when Claude has access to the project files, flag the missing group in the visual bible and continue only with the references actually present; do not silently substitute unrelated web images.
+
+
+======================================================================
+11. AVATAR SYSTEM
+======================================================================
+
+V1
+
+Ship with approximately 12-20 polished, rig-compatible preset avatars covering a useful range of appearances. Players can choose quickly in the lobby.
+
+All avatars should use a normalized skeleton/animation contract so gameplay does not care where the avatar came from.
+
+
+V1.1 / PHASE 2 - SELFIE AVATAR
+
+Evaluate Avatar SDK / MetaPerson and Avaturn for front-facing-selfie -> recognizable rigged avatar -> GLB/glTF workflows.
+
+Do NOT plan around Ready Player Me. Its public platform was discontinued in January 2026, so old architectural suggestions to integrate it are stale.
+
+Do not promise that a single selfie will perfectly reconstruct a player's exact current outfit. A reliable initial personalization promise is:
+
+"Create a recognizable avatar from a selfie, then choose/customize an outfit."
+
+Exact photo-conditioned wardrobe recreation can be an experimental later feature.
+
+
+AVATAR NETWORK DATA
+
+Synchronize transform, locomotion/action state, held object and optional voice-activity value. Do not stream full mesh/animation state per frame.
+
+Optional later enhancement: simple mouth/jaw blendshape driven by voice activity.
+
+
+AVATAR PRIVACY
+
+Selfie originals should be private, access-controlled and retained only as long as actually needed for the generation flow. Publish a clear retention/deletion policy before launching selfie generation.
+
+
+======================================================================
+12. ROOM AUTHORING AND DATA-DRIVEN PUZZLES
+======================================================================
+
+This is the foundation of the long-term release cadence.
+
+A new room should increasingly be a ROOM PACKAGE, not a fork of the application.
+
+
+STANDARD INTERACTION COMPONENTS
+
+Build reusable types such as:
+
+- PickUp.
+- Drop.
+- Examine.
+- Rotate.
+- Combine.
+- Insert/remove.
+- Open/close.
+- Lock/unlock.
+- Push/pull.
+- Button.
+- Toggle.
+- Lever.
+- Dial.
+- Keypad.
+- Door.
+- Drawer/container.
+- Terminal.
+- Document.
+- AudioSource.
+- PuzzleSocket.
+- SequenceInput.
+- MultiPlayerTrigger.
+- CrawlEntrance/contextual traversal.
+- Reveal/secret door.
+
+
+PUZZLE MODEL
+
+Represent puzzle behavior as validated conditions and effects where practical.
+
+Conceptually:
+
+CONDITIONS
+- Item exists in inventory.
+- Switch states match pattern.
+- Sequence entered.
+- Multiple stations ready.
+- Player-role requirement satisfied.
+- Prior puzzle solved.
+- Actions occur within time tolerance.
+
+EFFECTS
+- Mark puzzle solved.
+- Open door.
+- Reveal object.
+- Change light/state.
+- Enable interaction.
+- Play audio/video.
+- Add/remove inventory item.
+- Publish clue.
+- Advance mission phase.
+- Create checkpoint.
+- Recalculate Burn Window maneuver.
+
+
+ROOM PACKAGE CONTENT
+
+Each versioned room package can include:
+
+- Scene/environment assets.
+- Spawn points.
+- Navigation data.
+- Collision data.
+- Interactable definitions.
+- Client-safe presentation metadata.
+- Server-only puzzle rules/solutions.
+- Puzzle dependency graph.
+- Hint ladders.
+- Narrative triggers.
+- Audio/video references.
+- Player-count scaling rules.
+- Role/asymmetric-information rules.
+- Randomization rules.
+- Success/failure rules.
+- Performance/quality settings.
+
+Do not ship canonical answers to the browser when the client does not need them.
+
+
+AUTOMATED VALIDATION
+
+The content pipeline should eventually validate:
+
+- All referenced objects exist.
+- All required conditions can be satisfied.
+- Supported player-count variants remain solvable.
+- No mandatory object can become permanently lost.
+- Randomization cannot create impossible states.
+- A path to success exists from the initial state.
+- Hint ladders exist for every required puzzle.
+- Server/client room-package versions match.
+
+A state-level automated "solver" test does not need to understand the puzzles like a human; it can execute valid transitions to prove the graph can reach success.
+
+
+======================================================================
+13. PROPOSED APPLICATION DATA MODEL
+======================================================================
+
+Exact columns can evolve, but preserve these concepts:
+
+USERS
+Authentication identity.
+
+PLAYER_PROFILES
+Display name, preferences, accessibility, stats.
+
+AVATARS
+Preset/custom avatar reference, rig/version, ownership.
+
+GAMES
+Catalog identity: Burn Window, future rooms.
+
+GAME_VERSIONS
+Immutable/releasable room content version and compatibility metadata.
+
+BOOKINGS
+Scheduled/instant purchase event, host, start time, game version, status.
+
+BOOKING_SEATS
+Paid/claimed seats and purchaser/participant mapping.
+
+INVITATIONS
+Secure claim token, booking, recipient state, expiration.
+
+PAYMENTS
+Internal reference to Stripe customer/session/payment state. Never store raw card data.
+
+GAME_SESSIONS
+Actual instantiated play event, Colyseus room/session id, version, random seed, start/end/result.
+
+SESSION_PLAYERS
+Participant seat, avatar, join/reconnect state, role assignment, result metadata.
+
+SESSION_CHECKPOINTS
+Recovery snapshots at milestones/intervals.
+
+SESSION_EVENTS
+Append-only meaningful telemetry/event log for analytics, debugging and later recap generation.
+
+MEDIA_ARTIFACTS
+Team image, recap output, consent/entitlement/access metadata.
+
+ACHIEVEMENTS / ENTITLEMENTS
+Later catalog/retention features.
+
+
+======================================================================
+14. SESSION LIFECYCLE
+======================================================================
+
+Suggested states:
+
+CREATED
+-> AWAITING_SEATS / CONFIRMED
+-> LOBBY_OPEN
+-> READY
+-> BRIEFING
+-> ACTIVE
+-> ESCAPED or FAILED
+-> DEBRIEF
+-> ARCHIVED
+
+Cancellation/reschedule/payment states should remain separate enough that a booking is not confused with an active game session.
+
+Use UTC internally for stored times. Present dates/times in the player's local zone and make the scheduled-zone meaning explicit.
+
+
+======================================================================
+15. AUDIO ARCHITECTURE
+======================================================================
+
+TEAM VOICE
+
+- LiveKit WebRTC.
+- Open mic plus mute.
+- Optional push-to-talk.
+- Browser echo cancellation/noise suppression.
+- Voice-activity indicator on avatar/nameplate.
+- Text chat fallback.
+
+
+GAME AUDIO
+
+Client-side spatial/environment audio:
+
+- Footsteps.
+- Machinery.
+- Thrusters.
+- Alarms.
+- Door/interaction SFX.
+- Ambient ship sound.
+- Music.
+- Audio clues.
+- Prerecorded narrative.
+
+Duck ambience/music modestly during teammate/operator speech.
+
+
+AI OPERATOR AUDIO
+
+Use a queue/priority model so the operator does not speak over critical cinematic audio or itself. Major authored lines can be prerecorded. Dynamic responses may use TTS. Always retain text/fallback representation of essential information.
+
+
+VOICE RECORDING
+
+Do not record player microphones by default for marketing/replay. If voice is ever included in a recap product, obtain explicit consent and expose clear recording state. A telemetry-based visual recap can exist without recording private conversation.
+
+
+======================================================================
+16. POST-GAME MEDIA AND REPLAY
+======================================================================
+
+FREE V1 ARTIFACT
+
+Generate a branded team image/certificate from player avatars and session result.
+
+Example content:
+
+BURN WINDOW
+RETURN VECTOR ESTABLISHED
+Team completion time
+Date
+RealTimeEscape.com
+
+
+EVENT LOG FROM DAY ONE
+
+Even if highlight video is not in V1, log meaningful gameplay events so later versions can reconstruct a session:
+
+- Player entered area.
+- Major object discovered.
+- Puzzle solved.
+- Team split to stations.
+- Thruster armed.
+- Burn attempted.
+- Burn succeeded/failed.
+- Escape/failure.
+
+Also sample only the transform data actually necessary for a future recap.
+
+
+PREMIUM LATER FEATURE
+
+Automatically reconstruct a short cinematic highlight sequence from game telemetry without needing to record each player's raw screen.
+
+Potential business add-ons:
+
+- Team cinematic recap.
+- Alternate social cuts (landscape/vertical).
+- Expanded image pack.
+- Avatar cosmetics.
+
+
+======================================================================
+17. RELIABILITY, RECOVERY AND SELF-SERVICE OPERATIONS
+======================================================================
+
+Because there is no live human operator, reliability work is a product feature.
+
+
+AUTOMATED HEALTH CHECKS IN LOBBY
+
+- Browser support.
+- WebGPU/WebGL capability.
+- Asset load.
+- Microphone permission.
+- Speaker output.
+- WebRTC connectivity.
+- Multiplayer connection.
+- Basic frame-performance test.
+
+
+IN-GAME RECOVERY
+
+- Automatic reconnect.
+- Canonical state rehydration.
+- Reclaim paid seat.
+- Resume correct avatar/role.
+- Recover interactable ownership leases after disconnect timeout.
+- Restore from checkpoint after server process failure where possible.
+
+
+TIMER POLICY
+
+- Individual player's temporary disconnect does not automatically pause a team game.
+- A verified server/platform incident affecting the session can automatically pause/recover.
+- Policies should be deterministic and auditable.
+
+
+UNRECOVERABLE TECHNICAL FAILURE
+
+If platform health confirms that RealTimeEscape caused a qualifying unrecoverable session failure, automatically offer an appropriate self-service replay/reschedule credit. Do not make the customer locate a live Game Master in order to finish the evening.
+
+
+INTERNAL ADMIN TOOLS
+
+An admin/debug dashboard is still necessary for development and business operations. It may expose bookings, session events, versions, health and errors. Its existence does NOT mean someone must monitor normal games live.
+
+
+======================================================================
+18. ACCESSIBILITY AND CASUAL-PLAYER DESIGN
+======================================================================
+
+- Classic and guided movement.
+- Remappable keyboard controls where practical.
+- Reduced-motion setting.
+- No unnecessary head bob.
+- Subtitles for story/operator speech.
+- Visual equivalent for essential audio-only information unless an accessibility-specific puzzle mode supplies an alternative.
+- Do not rely solely on color for essential puzzle differentiation.
+- High-contrast interactable assistance option.
+- Text team chat.
+- Clear microphone/speaker controls.
+- UI scaling.
+- Simple focus mode for intricate puzzle controls.
+
+Accessibility should be incorporated into puzzle authoring rather than bolted on after every room is finished.
+
+
+======================================================================
+19. SECURITY AND PRIVACY
+======================================================================
+
+- Stripe-hosted/embedded Checkout prevents RealTimeEscape from handling raw card information.
+- Verify Stripe webhooks server-side and make fulfillment idempotent.
+- Use authenticated, seat-scoped session tokens.
+- Invitation tokens should be unguessable, expiring and claim-aware.
+- Apply database row-level/data-access rules.
+- Rate-limit relevant public endpoints.
+- Never expose server/API secrets in browser bundles.
+- Keep puzzle solutions/server validation off client where possible.
+- Signed/access-controlled user avatar and private media data.
+- Publish selfie retention policy before accepting face images.
+- Obtain consent before recording voice or using player-generated media for marketing.
+- Store room/session version with all results so bugs are reproducible.
+
+Browser-delivered assets can never be treated as perfectly secret. Security should protect payment, identity, private data and canonical puzzle decisions rather than depending on obfuscation.
+
+
+======================================================================
+20. BUSINESS MODEL
+======================================================================
+
+INITIAL CORE OFFER
+
+Burn Window: approximately $20/player for a 60-minute private digital escape event.
+
+Suggested launch simplification:
+
+- Same base seat price for Instant Private and Scheduled Private.
+- Host can pay all or split payment.
+- Avoid complex subscriptions before repeat demand exists.
+
+
+POTENTIAL LATER PRICING
+
+- $20 standard catalog seat.
+- $25 premium/new-release seat if demand supports it.
+- Small prepaid full-team discount.
+- Gift passes.
+- Season/catalog bundles.
+- Corporate/team-building tier, perhaps $30-40/head, once a self-service multi-team flow exists.
+- Post-game media/cosmetic add-ons.
+
+
+UNIT ECONOMICS PRINCIPLE
+
+The business removes physical rent/buildout and per-session Game Master labor. Compute, bandwidth and voice costs still exist and scale with usage. Content development, customer acquisition, refunds and payment fees are real costs.
+
+The model should therefore be described as highly scalable with potentially high gross margin after room-development cost is amortized, NOT as literally zero-cost/infinite-capacity software.
+
+
+SIMPLE REVENUE MATH
+
+10,000 paid player sessions/year x $20 = $200,000 gross revenue.
+
+100,000 paid player sessions/year x $20 = $2,000,000 gross revenue.
+
+At an average of six paid players per team:
+
+10,000 player sessions = about 1,667 team games/year = about 32 team games/week.
+
+100,000 player sessions = about 16,667 team games/year = about 320 team games/week.
+
+These numbers are technically plausible for horizontally scalable infrastructure. Customer acquisition and content/retention are likely to become larger business constraints than raw game-server capacity.
+
+
+STRIPE ECONOMICS REFERENCE
+
+At the current standard US domestic-card price previously researched (2.9% + $0.30), a separately processed $20 seat loses about $0.88 to payment processing before other costs. Revalidate pricing before financial forecasting/launch.
+
+Host-paid group transactions reduce the impact of the fixed per-transaction fee compared with eight independent payments.
+
+
+======================================================================
+21. INITIAL CASH BUDGET AND TIMELINE
+======================================================================
+
+The following are planning ranges, not vendor quotes. Revalidate all current service pricing before purchase.
+
+
+LIKELY CASH CATEGORIES TO FIRST PAYING CUSTOMER
+
+- Claude Fable 5 / Claude Code usage: approximately $200-$700 initial working budget, with explicit spend caps and actual usage measurement.
+- 3D asset packs / environment art / optional specialist polish: approximately $500-$3,000. This is one of the best places to spend money because Burn Window's visuals are the marketing.
+- Sound/music/SFX/VO assets: approximately $200-$500 depending on owned/licensed libraries.
+- Infrastructure during build/beta: often tens to low hundreds per month using entry/free tiers.
+- Production baseline infrastructure: roughly $100-$300/month initially depending on actual usage/service tiers.
+- Domain/email/miscellaneous: low hundreds.
+- Selfie-avatar commercial licensing: NOT required for V1 and not included until vendor terms are evaluated.
+
+Reasonable owner-built cash target for a polished first commercial release: approximately $2,000-$6,000, excluding the value of the founder's development/art/business time.
+
+It is possible to spend less by using owned/free assets. It is easy to spend much more with commissioned 3D environment work.
+
+
+TIMEFRAME
+
+Phase 0 core technical proof: approximately 3 weeks.
+
+Aggressive full-time path to paid beta with strict scope: approximately 10-14 weeks.
+
+High-polish solo/part-time path: approximately 3-4 months or longer.
+
+A 6-8 week polished commercial launch should be treated as an optimistic stretch goal, not the planning baseline.
+
+
+CASH BREAK-EVEN
+
+At $160 gross for a fully paid eight-person session, $2,000-$6,000 of launch cash is arithmetically equivalent to roughly 13-38 full sessions before payment fees or any other costs. "15-40 sessions" is a useful rough pre-marketing cash-recovery shorthand; actual business break-even will be higher once acquisition, processing, taxes, refunds, ongoing services and content are included.
+
+
+======================================================================
+22. MARKETING AND RETENTION ENGINE
+======================================================================
+
+Every room release should be treated like an entertainment premiere.
+
+Burn Window marketing assets should include:
+
+- Strong key art.
+- Short cinematic trailer.
+- Clips of multiple players coordinating from different spacecraft locations.
+- The floating-dead-astronaut cockpit reveal without over-spoiling puzzles.
+- Countdown/launch campaign.
+- Creator/streamer sessions where appropriate.
+- Shareable post-game team imagery.
+
+
+RETENTION
+
+Player profile eventually records:
+
+- Rooms attempted.
+- Escapes.
+- Completion time.
+- Hints.
+- Achievements/no-hint result.
+- Upcoming/new games.
+
+Each aftercare email can contain a referral mechanism and next-room action.
+
+
+AI MAKERS GENERATION RELATIONSHIP
+
+AI Makers Generation may be useful as a seed beta/testing or launch audience if desired, but RealTimeEscape.com is the product/business brand in this plan. Do not accidentally brand the consumer platform as AI Makers Generation.
+
+
+======================================================================
+23. RELEASE CADENCE
+======================================================================
+
+Do not let the idea of "weekly drops" damage Burn Window or the underlying engine.
+
+EARLY STAGE
+
+- Launch Burn Window.
+- Measure it.
+- Stabilize engine.
+- Build Room #2 using the same components.
+- Identify every place Room #2 still required custom engine code.
+- Convert repeated needs into authoring components.
+
+
+MATURE CONTENT FACTORY
+
+Weekly releases can eventually come from a staggered pipeline rather than creating a complete photorealistic 60-minute room from zero in seven days.
+
+Example:
+
+- Room A: concept/puzzle graph.
+- Room B: graybox/playtest.
+- Room C: art/asset pass.
+- Room D: final QA/release.
+
+Each room can take multiple weeks while one finished room exits the pipeline each week once sufficient people/process/content reuse exist.
+
+Bi-weekly or monthly flagship releases may be the better early cadence. Let customer retention and production quality determine the schedule.
+
+
+======================================================================
+24. DEVELOPMENT ROADMAP
+======================================================================
+
+PHASE 0 - PROVE THE HARD PART FIRST (APPROXIMATELY 3 WEEKS)
+
+Do NOT start by building the beautiful website or finished spacecraft.
+
+Build a graybox Burn Window final-burn prototype.
+
+Acceptance scenario:
+
+1. Three separate browser clients enter one private session.
+2. Each sees the other two as simple avatars.
+3. All three can speak through LiveKit.
+4. Player A is at a mock cockpit screen.
+5. Player B is at Thruster Station B.
+6. Player C is at Thruster Station C.
+7. Only Player A can see the generated maneuver instructions.
+8. Only B/C can manipulate their local station controls.
+9. A verbally directs B and C.
+10. B/C configure their panels.
+11. A sees readiness status update.
+12. B/C execute a simultaneous burn within server-defined tolerance.
+13. Colyseus authoritatively validates it.
+14. All clients see the shared success/failure state.
+15. One client disconnects/reconnects and restores its state.
+
+If this feels good, the central product has been proven.
+
+
+PHASE 1 - REUSABLE GAME CORE
+
+- Monorepo.
+- Babylon scene/bootstrap.
+- Player controller modes.
+- Colyseus protocol/state schema.
+- Avatar representation.
+- Object interactions/leasing.
+- Inventory.
+- Puzzle engine.
+- Room package schema/validation.
+- Timer/session lifecycle.
+- Checkpoint/reconnect.
+- LiveKit party voice.
+- Basic AI/operator interface with deterministic fallbacks.
+- Automated tests.
+
+
+PHASE 2 - COMMERCE AND CUSTOMER FLOW
+
+- Public landing/catalog.
+- Auth/profile.
+- Burn Window purchase page.
+- Stripe Checkout.
+- Host-pay/split-pay.
+- Booking/scheduling.
+- Secure invitations.
+- Lobby/readiness tests.
+- Instant private session.
+- Scheduled private session.
+- Transactional emails.
+- Debrief/results.
+
+
+PHASE 3 - BURN WINDOW CONTENT PRODUCTION
+
+- Final story beats.
+- Puzzle dependency graph.
+- Graybox complete 60-minute room.
+- Playtest puzzle pacing before full art lock.
+- Final environment art.
+- Cockpit bodies/reveal.
+- Navigation/thruster systems.
+- Final synchronized-burn variants.
+- Audio/cinematics/operator persona.
+- Hint ladders.
+- Lighting/postprocessing/performance pass.
+
+
+PHASE 4 - PRIVATE BETA
+
+- Recruit real groups, not only developers.
+- Test first-time casual players.
+- Test 3, 4, 6 and 8-player configurations.
+- Test geographically separated users.
+- Test integrated graphics and stronger GPUs.
+- Test disconnect/reconnect.
+- Test microphones/headsets/speakers.
+- Test payment/invite edge cases in Stripe test then controlled live mode.
+- Instrument puzzle times/hints.
+
+
+PHASE 5 - PAID PUBLIC LAUNCH
+
+- Stable room version.
+- Clear supported-browser requirements.
+- Monitoring/alerting.
+- Self-service recovery policy.
+- Trailer/key art.
+- Booking funnel.
+- Free post-game image.
+- Analytics dashboard.
+- Begin Room #2 only after critical Burn Window issues are understood.
+
+
+======================================================================
+25. SUGGESTED REPOSITORY / CODE ORGANIZATION
+======================================================================
+
+This is a recommended logical structure. Do not turn every folder into an independently deployed microservice until scale requires it.
+
+apps/
+  web/                       customer site, account, booking, lobby, HUD host
+  game-server/               Colyseus authoritative game server
+
+packages/
+  game-core/                 shared gameplay contracts/utilities
+  multiplayer-protocol/      messages/state schemas
+  room-schema/               versioned room-package schemas/validation
+  puzzle-engine/             reusable condition/effect engine
+  interaction-engine/        pickup/open/insert/dial/etc.
+  operator/                  hint/operator contracts and state grounding
+  ui/                        reusable web/HUD components
+  telemetry/                 typed events
+
+rooms/
+  burn-window/
+    content/                  puzzle/narrative/hint configuration
+    server/                   only truly room-specific authoritative logic
+    client/                   only truly room-specific presentation logic
+    manifests/                versioned metadata
+    tests/                    solvability and room-specific tests
+
+Large binary art/audio/video assets should live in the asset pipeline/object store rather than bloating the source repository.
+
+
+======================================================================
+26. CLAUDE FABLE 5 IMPLEMENTATION INSTRUCTIONS
+======================================================================
+
+Fable should not attempt to generate the entire business in one giant unverified pass.
+
+WORKING RULES
+
+1. Read this document before architecture work.
+2. Create/maintain concise architecture records for decisions that materially change this plan.
+3. Build Phase 0 before finished art/marketing pages.
+4. Keep TypeScript strict.
+5. Define shared schemas/contracts before ad-hoc client/server messages proliferate.
+6. Keep server authoritative for paid-game truth.
+7. Keep rooms data-driven.
+8. Do not let Burn Window-specific code leak throughout generic engine packages.
+9. Build tests with every reusable puzzle/interaction component.
+10. Add Playwright or equivalent multi-browser E2E scenarios early.
+11. Use Stripe test mode until payment flows are fully verified.
+12. Never hard-code production secrets.
+13. Validate external input/runtime room data.
+14. Prefer a modular monolith plus dedicated game server over premature microservice sprawl.
+15. Profile before optimizing, but enforce asset/performance budgets from the beginning.
+16. Do not introduce a live human Game Master workflow as a shortcut.
+17. Any AI clue capability must have deterministic canonical grounding and a non-AI fallback.
+18. Do not integrate Ready Player Me.
+19. Do not make public stranger matchmaking a V1 dependency.
+20. Do not move primary rendering to cloud GPU streaming without an explicit business/architecture reevaluation.
+21. Before Burn Window location visual development, locate and analyze the local `reference-aesthetic` folder according to Section 10. Do not substitute remembered/web aesthetics for those user-supplied images.
+22. Create `BURN_WINDOW_VISUAL_BIBLE.md` from the local Andor/Andor-colorpalette and Moon Knight/Moonknight-colorpalette references before bulk image prompting or final location art.
+23. Preserve the location mapping: Andor references inform the cockpit; Moon Knight references inform the initial civilian passenger viewing room.
+
+
+FIRST DOCUMENTS FABLE SHOULD CREATE IN THE REPOSITORY
+
+- PRODUCT.md
+- ARCHITECTURE.md
+- NETWORK_PROTOCOL.md
+- ROOM_SCHEMA.md
+- PUZZLE_COMPONENTS.md
+- OPERATOR_AND_HINTS.md
+- PERFORMANCE_BUDGET.md
+- TEST_PLAN.md
+- BURN_WINDOW_GAME_SPEC.md
+- BURN_WINDOW_VISUAL_BIBLE.md (created when the local `reference-aesthetic` assets are available and analyzed)
+
+These should become executable/maintained engineering documentation rather than copied prose that immediately goes stale.
+
+
+======================================================================
+27. TESTING STRATEGY
+======================================================================
+
+UNIT TESTS
+
+- Puzzle conditions/effects.
+- Inventory transitions.
+- Interaction leases.
+- Session timing/state machine.
+- Hint eligibility/tiering.
+- Burn timing tolerance.
+- Player-count scaling.
+- Room schema validation.
+
+
+STATE/SOLVABILITY TESTS
+
+- Automated valid path from initial Burn Window state to success.
+- Randomized final-burn seeds all validate.
+- Required items cannot disappear permanently.
+- Disconnect does not orphan exclusive object forever.
+
+
+MULTI-CLIENT E2E
+
+- 3 clients join.
+- Up to 8 clients join.
+- Remote avatars appear/update.
+- Shared object changes replicate.
+- Asymmetric views differ correctly.
+- Shared inventory syncs.
+- Hint appears/speaks to intended audience.
+- Burn Window final coordination validates.
+- Result is consistent across clients.
+
+
+NETWORK TESTS
+
+- Typical broadband latency.
+- Higher latency.
+- Brief packet loss.
+- Client disconnect/reconnect.
+- Game-server restart/recovery path.
+
+
+DEVICE/BROWSER TESTS
+
+- Modern Chrome.
+- Modern Edge.
+- Safari where supported by final technical requirements.
+- WebGPU path.
+- WebGL2 fallback path.
+- Integrated-GPU baseline.
+- Strong discrete-GPU/high profile.
+
+
+PAYMENT/BOOKING E2E
+
+- Host pays all.
+- Split payment.
+- Invite claim.
+- Expired invite.
+- Duplicate webhook/idempotency.
+- Failed/cancelled checkout.
+- Scheduled lobby.
+- Instant lobby.
+
+
+ZERO-HOST FAILURE TESTS
+
+Intentionally break:
+
+- AI/LLM response.
+- TTS.
+- A prerecorded clip load.
+- One player voice connection.
+- One player's game connection.
+
+The team must still have a defined, automated path and must never be stranded waiting for a human Game Master.
+
+
+======================================================================
+28. PRODUCT ANALYTICS TO COLLECT FROM LAUNCH
+======================================================================
+
+COMMERCE FUNNEL
+
+- Visit -> game detail.
+- Detail -> booking start.
+- Booking -> paid host.
+- Invitations sent.
+- Invitation -> seat claimed/paid.
+- Team size.
+
+
+SESSION HEALTH
+
+- Lobby success.
+- Asset load time.
+- Device tier.
+- FPS/frame-time percentiles.
+- Voice connection success.
+- Disconnect/reconnect rate.
+- Server errors.
+
+
+GAME DESIGN
+
+- Time spent per puzzle/milestone.
+- Hint requests by puzzle/tier.
+- Failure points.
+- Completion time.
+- Escape rate.
+- Player-count effect.
+- Final-burn retries.
+
+
+BUSINESS
+
+- Repeat purchase.
+- Referral conversion.
+- Refund/technical-credit rate.
+- Post-game share rate.
+- Media/add-on conversion.
+- Acquisition source/cost when paid marketing begins.
+
+Use aggregate product analytics to improve rooms; do not collect sensitive player data merely because it is technically possible.
+
+
+======================================================================
+29. INTERNAL ADMIN / CONTENT TOOLS
+======================================================================
+
+Eventually provide a private admin surface for:
+
+- Game catalog/releases.
+- Room-package version activation/rollback.
+- Booking lookup.
+- Session health/history.
+- Event log inspection.
+- Technical-credit/reschedule audit.
+- Puzzle analytics.
+- Hint analytics.
+- Asset/version validation status.
+- Customer entitlement lookup.
+
+This is an operations/debugging tool, not a Game Master station. Normal sessions cannot depend on an employee watching it.
+
+
+======================================================================
+30. FEATURES DEFERRED UNTIL CORE BUSINESS IS PROVEN
+======================================================================
+
+- Public stranger matchmaking.
+- Full mobile 3D gameplay.
+- VR.
+- User-generated rooms/marketplace.
+- Full facial performance/lip synchronization.
+- Exact clothing recreation from a selfie.
+- Continuous free-form AI NPC conversations.
+- Cloud GPU/Unreal Pixel Streaming as the standard experience.
+- Complex subscription plan.
+- Massive corporate tournament orchestration.
+- Fully automated cinematic video replay.
+- Weekly brand-new flagship releases before the content factory exists.
+
+These are potential features, not launch dependencies.
+
+
+======================================================================
+31. AFTER BURN WINDOW: PLATFORM EXPANSION
+======================================================================
+
+After Burn Window proves the platform:
+
+1. Build Room #2 almost entirely with the same interaction/puzzle engine.
+2. Document which supposedly generic components failed to generalize.
+3. Improve authoring schemas/tools.
+4. Introduce selfie avatars if licensing/economics make sense.
+5. Add richer player history/achievements.
+6. Add premium automated replay.
+7. Build self-service corporate/team competition.
+8. Create more asymmetric puzzle primitives.
+9. Stagger room production toward a predictable release calendar.
+10. Explore physical versions of the most commercially validated digital rooms.
+
+
+DIGITAL-TO-PHYSICAL STRATEGY
+
+A successful digital room produces unusually valuable data before any physical buildout:
+
+- Theme demand.
+- Purchase conversion.
+- Puzzle completion times.
+- Hint usage.
+- Team-size behavior.
+- Popular moments.
+- Repeat interest.
+
+A later physical RealTimeEscape experience can therefore be based on an already-tested digital hit rather than an unvalidated expensive room concept.
+
+
+======================================================================
+32. BUILD DEFINITION OF DONE FOR THE FIRST PAID BETA
+======================================================================
+
+Burn Window is ready for a controlled paid beta when ALL of the following are true:
+
+1. A new customer can discover Burn Window and understand the requirements.
+2. Host can purchase and create a private game without staff.
+3. Friends can securely claim/pay seats without staff.
+4. Scheduled or instant lobby opens automatically.
+5. Lobby reliably tests graphics/network/voice.
+6. 3-8 players can enter the same room on separate systems.
+7. Each player has an independent view.
+8. Everyone sees synchronized remote avatars and important object changes.
+9. Classic and guided movement are usable by first-time testers.
+10. Team voice works well enough for the final asymmetric communication mechanic.
+11. Inventory/notebook/clue functionality needed by the designed puzzles works.
+12. Every required Burn Window puzzle has authored hint tiers.
+13. AI operator can deliver state-aware help without being a single point of failure.
+14. If AI speech fails, required clue/help remains available automatically.
+15. Disconnected player can reconnect.
+16. Supported player counts cannot soft-lock the room.
+17. Final cockpit/thruster split requires real communication and feels satisfying.
+18. Server authoritatively validates final manual burn.
+19. 60-minute success/failure is consistent on all clients.
+20. Debrief/results are automatic.
+21. Free post-game team image/result artifact is delivered automatically or has a deterministic generation/retry path.
+22. Meaningful session telemetry is recorded.
+23. No live Game Master, host or clue giver is necessary anywhere in the normal customer path.
+24. The experience has passed multiple first-time group playtests and performance testing on the actual supported device/browser matrix.
+
+
+======================================================================
+33. CURRENT TECHNOLOGY / MARKET REFERENCE LINKS
+======================================================================
+
+These are reference points used during planning. Revalidate rapidly changing vendor pricing/features before implementation commitments.
+
+Babylon.js capabilities/specifications:
+https://www.babylonjs.com/specifications/
+
+Colyseus authoritative multiplayer framework:
+https://docs.colyseus.io/
+https://colyseus.io/pricing/
+
+LiveKit realtime media/voice:
+https://docs.livekit.io/transport/media/
+https://livekit.io/pricing
+
+Stripe Checkout and pricing:
+https://docs.stripe.com/payments/checkout-sessions
+https://stripe.com/pricing
+
+Supabase:
+https://supabase.com/docs
+https://supabase.com/pricing
+
+Cloudflare R2:
+https://developers.cloudflare.com/r2/
+https://developers.cloudflare.com/r2/pricing/
+
+Avatar SDK / MetaPerson:
+https://avatarsdk.com/
+
+Avaturn:
+https://avaturn.me/
+
+Escape Simulator product reference:
+https://pinestudio.com/games/escape-simulator/
+
+The Escape Game Remote Adventures:
+https://theescapegame.com/remote-adventures/
+
+Enchambered online multiplayer puzzle reference:
+https://www.enchambered.com/puzzles/together-at-heart/
+
+Escapology physical customer-flow reference:
+https://www.escapology.com/en/charlotte-nc/how-it-works
+
+Claude Fable 5 / Claude Code model guidance:
+https://docs.anthropic.com/en/docs/claude-code/model-config
+
+
+======================================================================
+34. FINAL PRODUCT PRINCIPLE
+======================================================================
+
+The goal is not merely to ship Burn Window.
+
+The goal is to use Burn Window to build the machinery that makes Room #2, Room #3 and eventually a recurring catalog dramatically easier to create.
+
+The immediate test is simple:
+
+Can three people in three different browsers enter the same simulated spacecraft, speak naturally, separate into cockpit and thruster positions, see different information, coordinate a synchronized manual burn, and all experience the same authoritative outcome?
+
+If that works and feels exciting, RealTimeEscape has its core.
+
+Then make Burn Window look and feel good enough that people willingly pay for it, invite friends and want the next room.
