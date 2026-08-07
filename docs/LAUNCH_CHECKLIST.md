@@ -39,15 +39,27 @@ exist yet. Until this runs, the site is a brochure.
 `xnejbxdvqmzlaljkgwaf` and run these three files in order, pasting each in full:
 
 ```
-supabase/migrations/0001_init.sql                   accounts, bookings, seats, invitations, sessions
+supabase/migrations/0001_init.sql                       accounts, bookings, seats, invitations, sessions
 supabase/migrations/0002_credits_recording_players.sql  credits, session recording, issue triage, player numbers
-supabase/migrations/0003_feedback_queue.sql         feedback capture and the collated bug/feature queue
+supabase/migrations/0003_feedback_queue.sql             feedback capture and the collated bug/feature queue
+supabase/migrations/0004_demo_and_credit_spend.sql      demo bookings, credit redemption accounting
 ```
 
-All three are guarded and safe to re-run.
+All four are guarded and safe to re-run.
 
-Then create one storage bucket named **`feedback-audio`** (private) so spoken feedback can be
-uploaded. Without it, audio feedback degrades to storing the report without the recording.
+**Or from the CLI**, if you supply the database password:
+
+```bash
+npx supabase link --project-ref xnejbxdvqmzlaljkgwaf --password '<db password>'
+npx supabase db push --password '<db password>'
+```
+
+> The Supabase CLI on this machine is logged in, but `supabase link` currently fails against the
+> API with an upstream timestamp-parsing bug (`LegacyLinkApiKeysNetworkError`) unrelated to this
+> project. The SQL-editor path avoids it entirely.
+
+**Already done:** the private **`feedback-audio`** storage bucket exists (created via the Storage
+API), and `ANTHROPIC_API_KEY`, `CONSENT_IP_SALT` and `DEMO_MODE_KEY` are set in Vercel production.
 
 **Or from the CLI**, if you supply the database password:
 
@@ -101,18 +113,22 @@ vercel env add NEXT_PUBLIC_GAME_SERVER_URL production   # wss://rte-game-server.
 
 Until this exists the lobby's network check reports "not configured", which is accurate.
 
-### 4. Switch on AI triage and feedback collation
+### 4. ~~Switch on AI triage and feedback collation~~ — done
 
-Issue triage and feedback collation both call Claude. Without a key they degrade safely — reports
-are stored and routed to a human, feedback is stored uncollated — but neither is automatic.
+`ANTHROPIC_API_KEY` and `CONSENT_IP_SALT` are set in Vercel production. Issue triage and feedback
+collation are live once the schema exists. See
+[REFUNDS_RECORDING_AND_FEEDBACK.md](./REFUNDS_RECORDING_AND_FEEDBACK.md) for what the model is and
+is not allowed to decide.
 
-```bash
-vercel env add ANTHROPIC_API_KEY production
-vercel env add CONSENT_IP_SALT production        # any long random string
-```
+### 4b. Demo mode
 
-See [REFUNDS_RECORDING_AND_FEEDBACK.md](./REFUNDS_RECORDING_AND_FEEDBACK.md) for what the model is
-and is not allowed to decide.
+Gated on `DEMO_MODE_KEY` (set in Vercel production). Click **demo** in the site header, enter the
+key, and seats become free with a minimum party size of one so a room can be walked solo. Demo
+bookings are flagged `is_demo` and excluded from revenue, the player ticker, and escape-rate stats.
+
+Rotate the key any time with `vercel env rm DEMO_MODE_KEY production` followed by a fresh
+`vercel env add`. Removing the variable entirely makes demo mode unreachable — the toggle
+disappears and the API returns 404.
 
 ### 5. Legal review of the recording defaults  ← **blocking for EU/UK sales**
 

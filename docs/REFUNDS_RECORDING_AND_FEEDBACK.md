@@ -203,4 +203,4 @@ stays private.
 | A `feedback-audio` storage bucket | Create it in Supabase; uploads currently degrade to storing the report without the audio. |
 | Admin review UI for `awaiting_review` reports | Every major determination is a human decision, and there is no screen for making it yet. |
 | Retention job | `rte_session_recordings.delete_after` is set on every row; nothing deletes them yet. |
-| Credit redemption at checkout | Credit is minted and tracked but cannot yet be spent — `rte_credit_ledger` supports `kind = 'spent'`, the checkout route does not apply it. **This is the highest-priority gap: issuing credit that cannot be spent is worse than issuing nothing.** |
+| ~~Credit redemption at checkout~~ | **Done.** `lib/credit.ts` reads the balance server-side at checkout and applies it as a Stripe coupon (so it appears on the receipt) or bypasses Stripe entirely when it covers the full amount. A negative ledger entry is written before the Stripe session is created, and the database trigger rejects any spend that would go negative — so two concurrent checkouts fail loudly rather than double-spending. |
