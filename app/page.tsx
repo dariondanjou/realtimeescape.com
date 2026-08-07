@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { GAMES, formatPrice } from '@/lib/catalog';
 import { publicStats } from '@/lib/stats';
 import { Ticker } from '@/components/Ticker';
+import HeroArt from '@/components/HeroArt';
 
 const game = GAMES[0];
 
@@ -15,33 +16,42 @@ export default async function Home() {
       <section className="hero">
         <div className="hero-bg" />
         <div className="hero-grid" />
-        <div className="wrap hero-inner">
-          <span className="eyebrow">First release · Burn Window</span>
-          <h1>
-            Your friends. One spacecraft.
-            <br />
-            Sixty minutes.
-          </h1>
-          <p className="lede">
-            A real-time multiplayer escape room that runs in your browser. Everyone gets their own
-            view of the same 3D world, everyone can talk, and nobody can see everything. No
-            download, no host, no physical room to drive to.
-          </p>
-          <div className="cta-row">
-            <Link href="/book/burn-window" className="btn btn-primary btn-lg">
-              Book Burn Window — {formatPrice(game.pricePerSeatCents)}/player
-            </Link>
-            <Link href="/demo" className="btn btn-ghost btn-lg">
-              Try the ending free
-            </Link>
-          </div>
-          <p className="tiny" style={{ marginTop: 20 }}>
-            3–8 players · 60 minutes · desktop or laptop browser · private group, always
-          </p>
+        <div className="wrap hero-inner hero-split">
+          <div>
+            <span className="eyebrow">First release · Burn Window</span>
+            <h1>
+              Your friends. One spacecraft.
+              <br />
+              Sixty minutes.
+            </h1>
+            <p className="lede">
+              A real-time multiplayer escape room that runs in your browser. Everyone gets their own
+              view of the same 3D world, everyone can talk, and nobody can see everything. No
+              download, no host, no physical room to drive to.
+            </p>
+            <div className="cta-row">
+              <Link href="/book/burn-window" className="btn btn-primary btn-lg">
+                Book Burn Window — {formatPrice(game.pricePerSeatCents)}/player
+              </Link>
+              <Link href="/demo" className="btn btn-ghost btn-lg">
+                Try the ending free
+              </Link>
+            </div>
+            <p className="tiny" style={{ marginTop: 20 }}>
+              3–8 players · 60 minutes · desktop or laptop browser · private group, always
+            </p>
 
-          <div style={{ maxWidth: 460, marginTop: 40 }}>
-            <Ticker stats={stats} />
+            <div style={{ maxWidth: 460, marginTop: 36 }}>
+              <Ticker stats={stats} />
+            </div>
           </div>
+
+          <figure className="hero-art">
+            <HeroArt />
+            <figcaption className="tiny" style={{ marginTop: 12 }}>
+              The passenger viewing lounge, CSV&nbsp;Meridian. Where the hour begins.
+            </figcaption>
+          </figure>
         </div>
       </section>
 

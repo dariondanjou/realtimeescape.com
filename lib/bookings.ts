@@ -23,13 +23,16 @@ export function inviteToken(): string {
  * Validates a booking request against the catalog. Never trust the client for seat count,
  * price or player limits — the browser sends intent, this decides truth.
  */
-export function validateBooking(input: CreateBookingInput) {
+export function validateBooking(input: CreateBookingInput, opts: { demo?: boolean } = {}) {
   const game = getGame(input.gameSlug);
   if (!game) return { ok: false as const, error: 'Unknown game.' };
 
+  // Demo mode drops the floor to one player so the room can be walked solo.
+  const minPlayers = opts.demo ? 1 : game.minPlayers;
+
   if (!Number.isInteger(input.seatCount)) return { ok: false as const, error: 'Seat count must be a whole number.' };
-  if (input.seatCount < game.minPlayers || input.seatCount > game.maxPlayers) {
-    return { ok: false as const, error: `${game.title} supports ${game.minPlayers}–${game.maxPlayers} players.` };
+  if (input.seatCount < minPlayers || input.seatCount > game.maxPlayers) {
+    return { ok: false as const, error: `${game.title} supports ${minPlayers}–${game.maxPlayers} players.` };
   }
 
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.hostEmail)) {
@@ -58,8 +61,8 @@ export function validateBooking(input: CreateBookingInput) {
 }
 
 /** Creates the booking, its seats and (for split payment) one invitation per unclaimed seat. */
-export async function createBooking(input: CreateBookingInput) {
-  const check = validateBooking(input);
+export async function createBooking(input: CreateBookingInput, opts: { demo?: boolean } = {}) {
+  const check = validateBooking(input, opts);
   if (!check.ok) throw new Error(check.error);
 
   const db = adminClient();
@@ -83,6 +86,8 @@ export async function createBooking(input: CreateBookingInput) {
       kind: input.kind,
       scheduled_for: input.kind === 'scheduled' ? new Date(input.scheduledFor!).toISOString() : null,
       status: 'created',
+      // Demo bookings are excluded from revenue, the player ticker and escape-rate stats.
+      is_demo: Boolean(opts.demo),
     })
     .select('id')
     .single();

@@ -25,14 +25,21 @@
   --warm-dark: #3e3028;
   --warm-mid: #745b4d;
 
-  /* Accent — manual override / hazard. Sampled #814525; lightened for UI contrast. */
-  --accent-deep: #814525;
-  --accent: #c86a32;
-  --accent-bright: #e6946d; /* sampled from the Moon Knight practical lamps */
+  /* Accent — the brand highlight. Smurf blue.
+     Kept in the same three-step structure as the sampled reference palettes so every
+     surface that used the old accent picks this up without further change. */
+  --accent-deep: #1a6e9e;
+  --accent: #35a8dc;
+  --accent-bright: #7fd4f5;
+  --on-accent: #04202e;   /* text on an accent fill — the blue is light, so this must be dark */
 
   /* Cool light — sampled from the Moon Knight window glazing */
   --cool-light: #95bad7;
   --cool-mid: #768a9a;
+
+  /* Warm practical — sampled from the Moon Knight pendant lamps. The only warmth in the
+     palette, kept as a counterpoint so the blue reads as cold rather than as "the theme". */
+  --practical: #e6946d;
 
   /* Semantic */
   --bg: #14191a;
@@ -80,7 +87,7 @@ a { color: inherit; text-decoration: none; }
 
 h1, h2, h3, h4 { line-height: 1.1; letter-spacing: -0.02em; font-weight: 600; }
 
-::selection { background: var(--accent); color: #fff; }
+::selection { background: var(--accent); color: var(--on-accent); }
 
 :focus-visible {
   outline: 2px solid var(--accent-bright);
@@ -152,8 +159,10 @@ h1, h2, h3, h4 { line-height: 1.1; letter-spacing: -0.02em; font-weight: 600; }
 .brand svg { width: 19px; height: 19px; flex: none; }
 
 .nav { display: flex; align-items: center; gap: 26px; font-size: 14px; }
-.nav a { color: var(--text-dim); transition: color 0.15s; }
-.nav a:hover { color: var(--text); }
+/* :not(.btn) matters — without it this rule out-specifies .btn-primary and the header CTA
+   renders dim grey on the accent fill. */
+.nav a:not(.btn) { color: var(--text-dim); transition: color 0.15s; }
+.nav a:not(.btn):hover { color: var(--text); }
 
 @media (max-width: 720px) {
   .nav .hide-sm { display: none; }
@@ -177,8 +186,8 @@ h1, h2, h3, h4 { line-height: 1.1; letter-spacing: -0.02em; font-weight: 600; }
   white-space: nowrap;
 }
 
-.btn-primary { background: var(--accent); color: #fff; }
-.btn-primary:hover { background: var(--accent-bright); color: #1a1210; }
+.btn-primary { background: var(--accent); color: var(--on-accent); font-weight: 600; }
+.btn-primary:hover { background: var(--accent-bright); color: var(--on-accent); }
 
 .btn-ghost { border-color: var(--border-strong); color: var(--text); background: transparent; }
 .btn-ghost:hover { border-color: var(--panel-lit); background: rgba(146, 164, 167, 0.07); }
@@ -318,9 +327,9 @@ th { color: var(--text-faint); font-weight: 500; font-size: 12px; text-transform
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(1100px 520px at 50% -12%, rgba(149, 186, 215, 0.16), transparent 62%),
-    radial-gradient(700px 380px at 84% 12%, rgba(200, 106, 50, 0.10), transparent 66%),
-    linear-gradient(180deg, #1a2122 0%, var(--bg) 74%);
+    radial-gradient(1100px 520px at 50% -12%, rgba(53, 168, 220, 0.20), transparent 62%),
+    radial-gradient(700px 380px at 84% 12%, rgba(127, 212, 245, 0.10), transparent 66%),
+    linear-gradient(180deg, #16212a 0%, var(--bg) 74%);
 }
 
 .hero-grid {
@@ -335,7 +344,32 @@ th { color: var(--text-faint); font-weight: 500; font-size: 12px; text-transform
 }
 
 /* Keeps .wrap's horizontal padding — overriding it here pins text to the viewport edge. */
-.hero-inner { position: relative; padding-top: 108px; padding-bottom: 92px; }
+.hero-inner { position: relative; padding-top: 92px; padding-bottom: 84px; }
+
+.hero-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.92fr);
+  gap: 52px;
+  align-items: center;
+}
+
+.hero-art {
+  margin: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--bg-panel);
+  padding: 0 0 14px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+}
+
+.hero-art figcaption { padding: 0 16px; }
+
+@media (max-width: 900px) {
+  .hero-split { grid-template-columns: 1fr; gap: 36px; }
+  /* On narrow screens the art follows the pitch rather than competing with it. */
+  .hero-art { order: 2; }
+}
 
 .hero h1 {
   font-size: clamp(2.4rem, 6.2vw, 4.6rem);

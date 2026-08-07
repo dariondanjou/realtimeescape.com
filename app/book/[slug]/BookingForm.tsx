@@ -1,13 +1,21 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { Game } from '@/lib/catalog';
 import { formatPrice } from '@/lib/catalog';
 
-type Props = { game: Game; paymentsLive: boolean; testMode: boolean; defaultEmail: string };
+type Props = {
+  game: Game;
+  paymentsLive: boolean;
+  testMode: boolean;
+  defaultEmail: string;
+  demo?: boolean;
+};
 
-export default function BookingForm({ game, paymentsLive, testMode, defaultEmail }: Props) {
-  const [seatCount, setSeatCount] = useState(Math.max(game.minPlayers, 5));
+export default function BookingForm({ game, paymentsLive, testMode, defaultEmail, demo = false }: Props) {
+  const minPlayers = demo ? 1 : game.minPlayers;
+  const [seatCount, setSeatCount] = useState(demo ? 1 : Math.max(game.minPlayers, 5));
+  const [creditCents, setCreditCents] = useState(0);
   const [kind, setKind] = useState<'instant' | 'scheduled'>('instant');
   const [paymentMode, setPaymentMode] = useState<'host_pays_all' | 'split'>('host_pays_all');
   const [scheduledFor, setScheduledFor] = useState('');
@@ -17,7 +25,30 @@ export default function BookingForm({ game, paymentsLive, testMode, defaultEmail
   const [error, setError] = useState<string | null>(null);
 
   const seatsNow = paymentMode === 'host_pays_all' ? seatCount : 1;
-  const dueNow = seatsNow * game.pricePerSeatCents;
+  const grossNow = seatsNow * game.pricePerSeatCents;
+  const creditApplied = demo ? grossNow : Math.min(creditCents, grossNow);
+  const dueNow = Math.max(0, grossNow - creditApplied);
+
+  // Look up any credit on this address once it is a plausible email.
+  useEffect(() => {
+    if (demo) return;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(hostEmail)) { setCreditCents(0); return; }
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch('/api/credit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: hostEmail }),
+        });
+        const data = await res.json();
+        if (!cancelled) setCreditCents(Number(data.balanceCents ?? 0));
+      } catch {
+        if (!cancelled) setCreditCents(0);
+      }
+    }, 500);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [hostEmail, demo]);
 
   const minLocal = useMemo(() => {
     const d = new Date(Date.now() + 20 * 60_000);
@@ -53,14 +84,21 @@ export default function BookingForm({ game, paymentsLive, testMode, defaultEmail
 
   return (
     <form onSubmit={submit}>
-      {testMode && (
+      {demo && (
+        <div className="notice notice-ok" style={{ marginBottom: 22 }}>
+          <strong>Demo mode.</strong> This booking is free, no card is involved, and you can play
+          on your own — pick 1 seat to walk the room solo, or more to bring your team in.
+        </div>
+      )}
+
+      {testMode && !demo && (
         <div className="notice notice-warn" style={{ marginBottom: 22 }}>
           Stripe is in <strong>test mode</strong>. Use card 4242 4242 4242 4242 with any future
           expiry and any CVC. No money moves.
         </div>
       )}
 
-      {!paymentsLive && (
+      {!paymentsLive && !demo && (
         <div className="notice notice-warn" style={{ marginBottom: 22 }}>
           Payments are not switched on yet, so checkout is disabled. Everything else on this page
           is live.
@@ -101,7 +139,7 @@ export default function BookingForm({ game, paymentsLive, testMode, defaultEmail
       <fieldset style={{ border: 0, marginBottom: 26 }}>
         <legend className="eyebrow eyebrow-dim" style={{ marginBottom: 12 }}>2 · How many of you</legend>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {Array.from({ length: game.maxPlayers - game.minPlayers + 1 }, (_, i) => game.minPlayers + i).map((n) => (
+          {Array.from({ length: game.maxPlayers - minPlayers + 1 }, (_, i) => minPlayers + i).map((n) => (
             <button
               key={n}
               type="button"
@@ -115,8 +153,9 @@ export default function BookingForm({ game, paymentsLive, testMode, defaultEmail
           ))}
         </div>
         <p className="tiny" style={{ marginTop: 10 }}>
-          Best with {game.recommended}. The ending needs at least one person in the cockpit and two
-          at separate thruster stations.
+          {demo
+            ? 'Demo mode lets you go in alone. The ending is designed around a cockpit and two separated thruster stations, so solo play means operating all of them yourself — useful for testing, not the real experience.'
+            : `Best with ${game.recommended}. The ending needs at least one person in the cockpit and two at separate thruster stations.`}
         </p>
       </fieldset>
 
@@ -203,6 +242,24 @@ export default function BookingForm({ game, paymentsLive, testMode, defaultEmail
           </div>
         </div>
 
+        {creditApplied > 0 && !demo && (
+          <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
+            <div className="spread small">
+              <span>Seats</span>
+              <span className="mono">{formatPrice(grossNow)}</span>
+            </div>
+            <div className="spread small" style={{ color: 'var(--accent-bright)', marginTop: 4 }}>
+              <span>Account credit applied</span>
+              <span className="mono">− {formatPrice(creditApplied)}</span>
+            </div>
+            {creditCents > creditApplied && (
+              <p className="tiny" style={{ marginTop: 8 }}>
+                {formatPrice(creditCents - creditApplied)} of credit stays on your account for next time.
+              </p>
+            )}
+          </div>
+        )}
+
         {error && (
           <div className="notice notice-warn" style={{ marginTop: 16 }} role="alert">{error}</div>
         )}
@@ -211,16 +268,24 @@ export default function BookingForm({ game, paymentsLive, testMode, defaultEmail
           type="submit"
           className="btn btn-primary btn-block btn-lg"
           style={{ marginTop: 18 }}
-          disabled={busy || !paymentsLive || !acceptedTerms}
+          disabled={busy || (!paymentsLive && dueNow > 0) || !acceptedTerms}
         >
           {busy
-            ? 'Opening checkout…'
-            : acceptedTerms
-              ? `Pay ${formatPrice(dueNow)} and create the booking`
-              : 'Please accept the terms above'}
+            ? dueNow > 0 ? 'Opening checkout…' : 'Creating your booking…'
+            : !acceptedTerms
+              ? 'Please accept the terms above'
+              : demo
+                ? 'Create the demo booking'
+                : dueNow === 0
+                  ? 'Confirm with account credit — nothing to pay'
+                  : `Pay ${formatPrice(dueNow)} and create the booking`}
         </button>
         <p className="tiny center" style={{ marginTop: 12 }}>
-          Card details are handled entirely by Stripe. We never see or store them.
+          {demo
+            ? 'Demo booking. No payment is taken and nothing counts toward the public stats.'
+            : dueNow === 0
+              ? 'Your credit covers this entirely. No card is involved.'
+              : 'Card details are handled entirely by Stripe. We never see or store them.'}
         </p>
       </div>
     </form>

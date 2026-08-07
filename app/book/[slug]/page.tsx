@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { getGame, formatPrice } from '@/lib/catalog';
 import { stripeConfigured, isTestMode } from '@/lib/stripe';
 import { currentUser } from '@/lib/supabase';
+import { isDemoMode } from '@/lib/demo';
 import BookingForm from './BookingForm';
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
@@ -16,7 +17,7 @@ export default async function BookPage({ params }: { params: Promise<{ slug: str
   const game = getGame(slug);
   if (!game) notFound();
 
-  const user = await currentUser();
+  const [user, demo] = await Promise.all([currentUser(), isDemoMode()]);
 
   return (
     <section className="section">
@@ -35,6 +36,7 @@ export default async function BookPage({ params }: { params: Promise<{ slug: str
               paymentsLive={stripeConfigured()}
               testMode={isTestMode()}
               defaultEmail={user?.email ?? ''}
+              demo={demo}
             />
           </div>
 

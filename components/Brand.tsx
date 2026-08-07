@@ -16,9 +16,9 @@ export function Mark({ size = 19 }: { size?: number }) {
         <polygon points="72,37.3 94,50 72,62.7 50,50" fill="#cad4d4" />
         <polygon points="94,75.4 72,88.1 72,62.7 94,50" fill="#3b4746" />
         <polygon points="50,75.4 72,88.1 72,62.7 50,50" fill="#768484" />
-        <polygon points="72,11.9 94,24.6 72,37.3 50,24.6" fill="#c86a32" />
-        <polygon points="94,50 72,62.7 72,37.3 94,24.6" fill="#6b3418" />
-        <polygon points="50,50 72,62.7 72,37.3 50,24.6" fill="#a15525" />
+        <polygon points="72,11.9 94,24.6 72,37.3 50,24.6" fill="#7fd4f5" />
+        <polygon points="94,50 72,62.7 72,37.3 94,24.6" fill="#14567d" />
+        <polygon points="50,50 72,62.7 72,37.3 50,24.6" fill="#35a8dc" />
       </g>
     </svg>
   );

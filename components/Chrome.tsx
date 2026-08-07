@@ -1,7 +1,16 @@
 import Link from 'next/link';
 import { Mark, GlitchWord } from './Brand';
+import DemoToggle from './DemoToggle';
 
-export function Header({ signedIn }: { signedIn: boolean }) {
+export function Header({
+  signedIn,
+  demoAvailable = false,
+  demoActive = false,
+}: {
+  signedIn: boolean;
+  demoAvailable?: boolean;
+  demoActive?: boolean;
+}) {
   return (
     <header className="site-header">
       <div className="bar">
@@ -10,6 +19,7 @@ export function Header({ signedIn }: { signedIn: boolean }) {
           <GlitchWord text="realtimeescape.com" />
         </Link>
         <nav className="nav">
+          {demoAvailable && <DemoToggle active={demoActive} />}
           <Link href="/games" className="hide-sm">Games</Link>
           <Link href="/demo" className="hide-sm">Try it</Link>
           <Link href="/how-it-works" className="hide-sm">How it works</Link>

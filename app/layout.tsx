@@ -3,6 +3,7 @@ import './globals.css';
 import { Header, Footer } from '@/components/Chrome';
 import FeedbackWidget from '@/components/FeedbackWidget';
 import { currentUser } from '@/lib/supabase';
+import { demoAvailable, isDemoMode } from '@/lib/demo';
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://realtimeescape.com';
 
@@ -28,11 +29,21 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const user = await currentUser();
+  const [user, demoActive] = await Promise.all([currentUser(), isDemoMode()]);
   return (
     <html lang="en">
       <body>
-        <Header signedIn={Boolean(user)} />
+        <Header signedIn={Boolean(user)} demoAvailable={demoAvailable()} demoActive={demoActive} />
+        {demoActive && (
+          <div
+            style={{
+              background: 'var(--accent-deep)', color: '#dff2fb', textAlign: 'center',
+              padding: '7px 16px', fontSize: 13,
+            }}
+          >
+            Demo mode — seats are free, you can play solo, and nothing counts toward the public stats.
+          </div>
+        )}
         <main>{children}</main>
         <Footer />
         {/* Available everywhere, including mid-game — the moment somebody notices something is
