@@ -32,12 +32,22 @@ Last updated 7 August 2026.
 
 ### 1. Apply the database schema  ← **do this first, nothing else works without it**
 
-Booking, accounts and invitations all write to tables that do not exist yet. Until this runs,
-the site is a brochure.
+Booking, accounts, invitations, credits, recording and feedback all write to tables that do not
+exist yet. Until this runs, the site is a brochure.
 
-**Fastest path (about 30 seconds):** open the Supabase SQL editor for project
-`xnejbxdvqmzlaljkgwaf`, paste the entire contents of
-`supabase/migrations/0001_init.sql`, and run it. It is guarded and safe to re-run.
+**Fastest path (about a minute):** open the Supabase SQL editor for project
+`xnejbxdvqmzlaljkgwaf` and run these three files in order, pasting each in full:
+
+```
+supabase/migrations/0001_init.sql                   accounts, bookings, seats, invitations, sessions
+supabase/migrations/0002_credits_recording_players.sql  credits, session recording, issue triage, player numbers
+supabase/migrations/0003_feedback_queue.sql         feedback capture and the collated bug/feature queue
+```
+
+All three are guarded and safe to re-run.
+
+Then create one storage bucket named **`feedback-audio`** (private) so spoken feedback can be
+uploaded. Without it, audio feedback degrades to storing the report without the recording.
 
 **Or from the CLI**, if you supply the database password:
 
@@ -91,7 +101,30 @@ vercel env add NEXT_PUBLIC_GAME_SERVER_URL production   # wss://rte-game-server.
 
 Until this exists the lobby's network check reports "not configured", which is accurate.
 
-### 4. Transactional email
+### 4. Switch on AI triage and feedback collation
+
+Issue triage and feedback collation both call Claude. Without a key they degrade safely — reports
+are stored and routed to a human, feedback is stored uncollated — but neither is automatic.
+
+```bash
+vercel env add ANTHROPIC_API_KEY production
+vercel env add CONSENT_IP_SALT production        # any long random string
+```
+
+See [REFUNDS_RECORDING_AND_FEEDBACK.md](./REFUNDS_RECORDING_AND_FEEDBACK.md) for what the model is
+and is not allowed to decide.
+
+### 5. Legal review of the recording defaults  ← **blocking for EU/UK sales**
+
+Images and video are captured and usable publicly **by default, with an opt-out**. That is a
+deliberate product decision with real jurisdictional exposure — GDPR generally requires affirmative
+consent for marketing use of a recognisable person's image, and several US states have their own
+biometric and likeness statutes. Team voice is already opt-in everywhere.
+
+The schema supports flipping images and video to opt-in per region by changing one default
+(`rte_session_consents.media_social_use`). Get this reviewed before taking money in the EU or UK.
+
+### 6. Transactional email
 
 No provider is wired. Booking confirmations, invitations and results are currently surfaced
 on-page rather than emailed. Pick a provider, then send: booking confirmation, invitation,

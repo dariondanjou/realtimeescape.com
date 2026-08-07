@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { loadBooking } from '@/lib/bookings';
 import ReadinessChecks from './ReadinessChecks';
+import RecordingConsent from './RecordingConsent';
 
 export const metadata: Metadata = { title: 'Lobby', robots: { index: false } };
 export const dynamic = 'force-dynamic';
@@ -39,6 +40,9 @@ export default async function LobbyPage({ params }: { params: Promise<{ id: stri
           <div>
             <h2 style={{ fontSize: 20, marginBottom: 14 }}>Before you fly</h2>
             <ReadinessChecks enabled={allPaid} />
+
+            <h2 style={{ fontSize: 20, margin: '34px 0 14px' }}>Recording</h2>
+            <RecordingConsent sessionId={booking.id} />
           </div>
 
           <aside>

@@ -12,6 +12,7 @@ export default function BookingForm({ game, paymentsLive, testMode, defaultEmail
   const [paymentMode, setPaymentMode] = useState<'host_pays_all' | 'split'>('host_pays_all');
   const [scheduledFor, setScheduledFor] = useState('');
   const [hostEmail, setHostEmail] = useState(defaultEmail);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -156,6 +157,39 @@ export default function BookingForm({ game, paymentsLive, testMode, defaultEmail
         </div>
       </fieldset>
 
+      {/* The no-refund term is the one commercial condition a buyer most needs to have seen.
+          It is acknowledged explicitly rather than buried in a linked document. */}
+      <div className="panel" style={{ borderColor: 'var(--accent-deep)', marginBottom: 18 }}>
+        <label
+          style={{
+            display: 'flex', gap: 11, alignItems: 'flex-start', cursor: 'pointer',
+            margin: 0, color: 'inherit', fontSize: 'inherit',
+          }}
+        >
+          <input
+            type="checkbox"
+            required
+            checked={acceptedTerms}
+            onChange={(e) => setAcceptedTerms(e.target.checked)}
+            style={{ width: 17, height: 17, marginTop: 3, flex: 'none', accentColor: 'var(--accent)' }}
+          />
+          <span className="small">
+            I understand this is a <strong>premium beta experience</strong> and that{' '}
+            <strong>all sales are final</strong>. If a problem significantly compromises the
+            experience, I will receive <strong>account credit</strong> toward a replay or another
+            game — <strong>not a refund</strong>. Credit has no cash value. I have read the{' '}
+            <a
+              href="/legal/terms"
+              target="_blank"
+              rel="noreferrer"
+              style={{ color: 'var(--accent-bright)', textDecoration: 'underline' }}
+            >
+              terms
+            </a>.
+          </span>
+        </label>
+      </div>
+
       <div className="panel" style={{ background: 'var(--bg)' }}>
         <div className="spread">
           <div>
@@ -177,9 +211,13 @@ export default function BookingForm({ game, paymentsLive, testMode, defaultEmail
           type="submit"
           className="btn btn-primary btn-block btn-lg"
           style={{ marginTop: 18 }}
-          disabled={busy || !paymentsLive}
+          disabled={busy || !paymentsLive || !acceptedTerms}
         >
-          {busy ? 'Opening checkout…' : `Pay ${formatPrice(dueNow)} and create the booking`}
+          {busy
+            ? 'Opening checkout…'
+            : acceptedTerms
+              ? `Pay ${formatPrice(dueNow)} and create the booking`
+              : 'Please accept the terms above'}
         </button>
         <p className="tiny center" style={{ marginTop: 12 }}>
           Card details are handled entirely by Stripe. We never see or store them.

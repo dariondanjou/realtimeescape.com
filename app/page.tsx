@@ -1,9 +1,15 @@
 import Link from 'next/link';
 import { GAMES, formatPrice } from '@/lib/catalog';
+import { publicStats } from '@/lib/stats';
+import { Ticker } from '@/components/Ticker';
 
 const game = GAMES[0];
 
-export default function Home() {
+export const dynamic = 'force-dynamic';
+
+export default async function Home() {
+  const stats = await publicStats();
+
   return (
     <>
       <section className="hero">
@@ -32,6 +38,10 @@ export default function Home() {
           <p className="tiny" style={{ marginTop: 20 }}>
             3–8 players · 60 minutes · desktop or laptop browser · private group, always
           </p>
+
+          <div style={{ maxWidth: 460, marginTop: 40 }}>
+            <Ticker stats={stats} />
+          </div>
         </div>
       </section>
 

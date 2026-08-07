@@ -52,6 +52,8 @@ export function Footer() {
           </div>
           <div>
             <h4>Company</h4>
+            <Link href="/roadmap">What we&rsquo;re fixing</Link>
+            <Link href="/report">Report a problem</Link>
             <Link href="/legal/terms">Terms</Link>
             <Link href="/legal/privacy">Privacy</Link>
             <Link href="/support">Support</Link>

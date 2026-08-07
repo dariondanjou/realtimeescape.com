@@ -35,6 +35,7 @@ Read in this order:
 | [docs/PUZZLE_COMPONENTS.md](docs/PUZZLE_COMPONENTS.md) | Reusable interaction + puzzle engine |
 | [docs/OPERATOR_AND_HINTS.md](docs/OPERATOR_AND_HINTS.md) | Zero-host automated operator and hint engine |
 | [docs/BURN_WINDOW_GAME_SPEC.md](docs/BURN_WINDOW_GAME_SPEC.md) | **The game.** Puzzle graph, acts, scaling, randomization, hints |
+| [docs/REFUNDS_RECORDING_AND_FEEDBACK.md](docs/REFUNDS_RECORDING_AND_FEEDBACK.md) | No-refund/credit policy, session recording and consent, AI triage limits, the collated feedback queue |
 | [docs/BURN_WINDOW_VISUAL_BIBLE.md](docs/BURN_WINDOW_VISUAL_BIBLE.md) | Sampled palettes, lighting, lens and prompt blocks |
 | [docs/PERFORMANCE_BUDGET.md](docs/PERFORMANCE_BUDGET.md) | Enforceable frame, payload and network budgets |
 | [docs/TEST_PLAN.md](docs/TEST_PLAN.md) | Full testing strategy and CI gates |

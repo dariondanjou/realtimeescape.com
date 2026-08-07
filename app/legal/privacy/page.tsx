@@ -22,16 +22,42 @@ export default function Privacy() {
           issue refunds.
         </S>
 
-        <S t="Voice">
-          We do not record your microphone. Team voice is carried live between players and is not
-          written to disk. If we ever build a product that includes recorded voice, it will be
-          opt-in, obvious while it is happening, and off by default.
+        <S t="Session recording">
+          Because we resolve qualifying problems with account credit rather than refunds, we need to
+          be able to see what actually happened in a session. We record three things, each with its
+          own setting, all shown to you in the lobby before the game starts:
+          <ul style={{ paddingLeft: 20, marginTop: 10, display: 'grid', gap: 8 }}>
+            <li>
+              <strong>Gameplay and controls — always recorded.</strong> Puzzles solved, hints
+              requested, when the team split up, every burn attempted, and which controls each
+              player operated. It records <em>which</em> control you used, never what you typed.
+            </li>
+            <li>
+              <strong>Images and video — recorded by default, with an opt-out.</strong> Session
+              footage and the team image, which we may use publicly including on social media. You
+              can switch this off in the lobby. Doing so also removes the visual record we would use
+              to investigate a problem, which we tell you at the point of choosing.
+            </li>
+            <li>
+              <strong>Team voice — off unless you opt in.</strong> We do not record your microphone
+              unless every player in your group agrees. It is obvious in the HUD whenever it is
+              active, and declining does not affect your ability to play or to report a problem.
+            </li>
+          </ul>
         </S>
 
-        <S t="Gameplay telemetry">
-          We log the events that make a game reconstructable: puzzles solved, hints requested, when
-          the team split up, every burn attempted and its result. This drives your debrief and tells
-          us which puzzles are badly designed. It is tied to your session, not sold to anybody.
+        <S t="How long recordings are kept">
+          Gameplay and input records are kept for 24 months so we can reproduce bugs and audit issue
+          determinations. Voice recordings are deleted after 90 days. Images and video are kept for
+          24 months, or indefinitely where a clip has been published with consent. You can ask us to
+          delete any recording of your session at any time.
+        </S>
+
+        <S t="Feedback you send us">
+          Written and spoken feedback is stored, grouped with similar feedback from other players
+          into a single topic, and used to decide what we build and fix next. The collated topics
+          are public on our roadmap; what you personally wrote or said is not. If you include your
+          email we may reply to it; you can leave feedback anonymously.
         </S>
 
         <S t="Selfie avatars">

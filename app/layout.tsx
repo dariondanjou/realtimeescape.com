@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { Header, Footer } from '@/components/Chrome';
+import FeedbackWidget from '@/components/FeedbackWidget';
 import { currentUser } from '@/lib/supabase';
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://realtimeescape.com';
@@ -34,6 +35,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <Header signedIn={Boolean(user)} />
         <main>{children}</main>
         <Footer />
+        {/* Available everywhere, including mid-game — the moment somebody notices something is
+            the moment they can best describe it. */}
+        <FeedbackWidget context="site" />
       </body>
     </html>
   );
