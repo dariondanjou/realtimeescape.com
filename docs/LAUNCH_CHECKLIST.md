@@ -129,15 +129,17 @@ Verify with Stripe's `4242 4242 4242 4242`, then run the payment E2E cases in
 [TEST_PLAN.md](./TEST_PLAN.md): host pays all, split payment, invite claim, expired invite,
 duplicate webhook, cancelled checkout.
 
-### 3. Deploy the game server
+### 3. ~~Deploy the game server~~ — **DONE, 8 August 2026**
 
-```bash
-cd game-server && npm install
-fly launch --name rte-game-server && fly deploy    # or railway up
-vercel env add NEXT_PUBLIC_GAME_SERVER_URL production   # wss://rte-game-server.fly.dev
-```
+Live on Railway at `wss://realtimeescapecom-production.up.railway.app` (EU West, 1 replica,
+healthcheck `/health`). `RESULT_WEBHOOK_URL` and `RESULT_WEBHOOK_SECRET` (= `CRON_SECRET`) are set
+in Railway; `NEXT_PUBLIC_GAME_SERVER_URL` is set in Vercel production and baked into the lobby
+bundle. Verified end to end: a demo booking's matchmake request created a real `burn_window` room
+and returned a session.
 
-Until this exists the lobby's network check reports "not configured", which is accurate.
+One deploy gotcha, already fixed: Nixpacks bind-mounts its build cache at
+`/app/tsconfig.tsbuildinfo`, so that file being committed broke the build with
+`mount … not a directory`. It is now gitignored — do not commit it again.
 
 ### 4. ~~Switch on AI triage and feedback collation~~ — done
 
