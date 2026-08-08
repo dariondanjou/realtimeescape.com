@@ -16,10 +16,10 @@ export default function HeroSpace() {
     >
       <defs>
         <radialGradient id="hsEarth" cx="50%" cy="18%" r="95%">
-          <stop offset="0%" stopColor="#8fd0f2" />
-          <stop offset="26%" stopColor="#3f9bd4" />
-          <stop offset="55%" stopColor="#155c96" />
-          <stop offset="100%" stopColor="#031d38" />
+          <stop offset="0%" stopColor="#3f8fc4" />
+          <stop offset="24%" stopColor="#1f639c" />
+          <stop offset="55%" stopColor="#0d3a63" />
+          <stop offset="100%" stopColor="#021527" />
         </radialGradient>
         <linearGradient id="hsAtmo" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#9fe0ff" stopOpacity="0.95" />
@@ -75,22 +75,21 @@ export default function HeroSpace() {
       {/* upper glow so the black is not dead flat */}
       <rect width="1600" height="420" fill="url(#hsGlow)" opacity="0.25" />
 
-      {/* Earth limb — a planet far larger than the frame, rising from the bottom */}
-      <circle cx="800" cy="2260" r="1660" fill="url(#hsEarth)" />
+      {/* Earth limb — a planet far larger than the frame, cresting the bottom edge so
+          the slogan and buttons float in clean black space above it */}
+      <circle cx="800" cy="2420" r="1660" fill="url(#hsEarth)" />
 
       {/* clouds hugging the limb */}
-      <g fill="#eef8fe" opacity="0.2">
-        <ellipse cx="430" cy="700" rx="200" ry="16" transform="rotate(-7 430 700)" />
-        <ellipse cx="820" cy="646" rx="260" ry="14" transform="rotate(-1 820 646)" />
-        <ellipse cx="1210" cy="712" rx="190" ry="15" transform="rotate(6 1210 712)" />
-        <ellipse cx="620" cy="762" rx="150" ry="12" transform="rotate(-4 620 762)" />
-        <ellipse cx="1030" cy="780" rx="170" ry="13" transform="rotate(3 1030 780)" />
+      <g fill="#eef8fe" opacity="0.13">
+        <ellipse cx="450" cy="836" rx="190" ry="13" transform="rotate(-6 450 836)" />
+        <ellipse cx="830" cy="792" rx="250" ry="12" transform="rotate(-1 830 792)" />
+        <ellipse cx="1220" cy="846" rx="180" ry="12" transform="rotate(5 1220 846)" />
       </g>
 
       {/* the atmosphere line — the hero's single brightest element, concentric with the limb */}
-      <circle cx="800" cy="2260" r="1712" fill="none" stroke="url(#hsAtmo)" strokeWidth="105" opacity="0.16" />
-      <circle cx="800" cy="2260" r="1666" fill="none" stroke="url(#hsAtmo)" strokeWidth="9" opacity="0.9" />
-      <circle cx="800" cy="2260" r="1662" fill="none" stroke="#c9ecff" strokeWidth="2" opacity="0.85" />
+      <circle cx="800" cy="2420" r="1712" fill="none" stroke="url(#hsAtmo)" strokeWidth="105" opacity="0.16" />
+      <circle cx="800" cy="2420" r="1666" fill="none" stroke="url(#hsAtmo)" strokeWidth="9" opacity="0.9" />
+      <circle cx="800" cy="2420" r="1662" fill="none" stroke="#c9ecff" strokeWidth="2" opacity="0.85" />
     </svg>
   );
 }
