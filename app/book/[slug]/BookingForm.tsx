@@ -177,24 +177,27 @@ export default function BookingForm({ game, paymentsLive, testMode, defaultEmail
         </div>
       </fieldset>
 
-      <fieldset style={{ border: 0, marginBottom: 26 }}>
-        <legend className="eyebrow eyebrow-dim" style={{ marginBottom: 12 }}>4 · Where we send it</legend>
-        <div className="field">
-          <label htmlFor="email">Your email</label>
-          <input
-            id="email"
-            type="email"
-            required
-            autoComplete="email"
-            placeholder="you@example.com"
-            value={hostEmail}
-            onChange={(e) => setHostEmail(e.target.value)}
-          />
-          <p className="tiny" style={{ marginTop: 6 }}>
-            Booking confirmation, invite links and your results go here.
-          </p>
-        </div>
-      </fieldset>
+      {/* Demo bookings send nothing, so there is nothing to ask an address for. */}
+      {!demo && (
+        <fieldset style={{ border: 0, marginBottom: 26 }}>
+          <legend className="eyebrow eyebrow-dim" style={{ marginBottom: 12 }}>4 · Where we send it</legend>
+          <div className="field">
+            <label htmlFor="email">Your email</label>
+            <input
+              id="email"
+              type="email"
+              required
+              autoComplete="email"
+              placeholder="you@example.com"
+              value={hostEmail}
+              onChange={(e) => setHostEmail(e.target.value)}
+            />
+            <p className="tiny" style={{ marginTop: 6 }}>
+              Booking confirmation, invite links and your results go here.
+            </p>
+          </div>
+        </fieldset>
+      )}
 
       {/* The no-refund term is the one commercial condition a buyer most needs to have seen.
           It is acknowledged explicitly rather than buried in a linked document. */}

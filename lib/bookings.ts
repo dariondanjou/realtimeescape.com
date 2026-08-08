@@ -35,7 +35,9 @@ export function validateBooking(input: CreateBookingInput, opts: { demo?: boolea
     return { ok: false as const, error: `${game.title} supports ${minPlayers}–${game.maxPlayers} players.` };
   }
 
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.hostEmail)) {
+  // Demo bookings need no email — nothing is sent and the booking is throwaway. A real one
+  // (or a demo booking that does supply an address) must still be valid.
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.hostEmail) && !(opts.demo && input.hostEmail.trim() === '')) {
     return { ok: false as const, error: 'Enter a valid email address.' };
   }
 
