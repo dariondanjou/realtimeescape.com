@@ -3,21 +3,32 @@ import { cookies } from 'next/headers';
 /**
  * Demo mode.
  *
- * Lets the owner and invited testers play a full game without paying and without needing a full
- * crew — minimum party size drops to one, and checkout is bypassed entirely.
+ * Free seats, and a minimum party size of one so a room can be walked solo.
  *
- * Two guardrails, because "free games" is exactly the switch an attacker looks for:
+ * Two independent switches:
  *
- *   1. It is gated on DEMO_MODE_KEY, a server-side secret. Without that env var set, demo mode
- *      cannot be enabled by anyone, including by hand-crafting the cookie.
- *   2. Every booking made in demo mode is flagged `is_demo`, so demo sessions never pollute the
- *      revenue figures, the player ticker, or the escape-rate statistics.
+ *   DEMO_MODE_KEY   Set → demo mode exists at all. Unset → the toggle disappears and the API
+ *                   returns 404. This is the master off switch.
+ *   DEMO_MODE_OPEN  'true' → anyone can turn demo mode on with one click, no passkey.
+ *                   Anything else → the passkey is required.
+ *
+ * ⚠️ DEMO_MODE_OPEN=true means ANY visitor can give themselves free games. That is fine while
+ * nobody is being charged, and it must be turned off before real sales. See docs/LAUNCH_CHECKLIST.md.
+ *
+ * The cookie stores the server-side key rather than a boolean either way, so a hand-crafted
+ * `rte_demo=true` is worthless — the server compares against DEMO_MODE_KEY on every request
+ * rather than trusting the client's claim.
  */
 
 export const DEMO_COOKIE = 'rte_demo';
 
 export function demoAvailable(): boolean {
   return Boolean(process.env.DEMO_MODE_KEY);
+}
+
+/** True when demo mode can be enabled without the passkey. */
+export function demoOpen(): boolean {
+  return demoAvailable() && process.env.DEMO_MODE_OPEN === 'true';
 }
 
 /** True when the current request is in demo mode. */

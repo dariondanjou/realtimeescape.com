@@ -3,7 +3,7 @@ import './globals.css';
 import { Header, Footer } from '@/components/Chrome';
 import FeedbackWidget from '@/components/FeedbackWidget';
 import { currentUser } from '@/lib/supabase';
-import { demoAvailable, isDemoMode } from '@/lib/demo';
+import { demoAvailable, demoOpen, isDemoMode } from '@/lib/demo';
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://realtimeescape.com';
 
@@ -33,7 +33,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="en">
       <body>
-        <Header signedIn={Boolean(user)} demoAvailable={demoAvailable()} demoActive={demoActive} />
+        <Header
+          signedIn={Boolean(user)}
+          demoAvailable={demoAvailable()}
+          demoActive={demoActive}
+          demoOpen={demoOpen()}
+        />
         {demoActive && (
           <div
             style={{
@@ -42,6 +47,20 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             }}
           >
             Demo mode — seats are free, you can play solo, and nothing counts toward the public stats.
+          </div>
+        )}
+        {/* Open demo mode means any visitor can give themselves free games. Kept deliberately
+            loud so it cannot be left on by accident once real money is involved. */}
+        {demoOpen() && !demoActive && (
+          <div
+            style={{
+              background: '#5a3410', color: '#ffd9bd', textAlign: 'center',
+              padding: '6px 16px', fontSize: 12,
+            }}
+          >
+            Demo mode is unlocked for everyone — anyone can claim free seats. Set
+            <code style={{ margin: '0 5px' }}>DEMO_MODE_OPEN=false</code>
+            before taking real payments.
           </div>
         )}
         <main>{children}</main>

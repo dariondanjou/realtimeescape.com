@@ -8,8 +8,8 @@ import { useState } from 'react';
  * On: seats are free, and a game can be started solo. Turning it on asks for the demo key once,
  * then it persists until switched off.
  */
-export default function DemoToggle({ active }: { active: boolean }) {
-  const [open, setOpen] = useState(false);
+export default function DemoToggle({ active, open = false }: { active: boolean; open?: boolean }) {
+  const [promptOpen, setPromptOpen] = useState(false);
   const [key, setKey] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,11 +47,27 @@ export default function DemoToggle({ active }: { active: boolean }) {
     );
   }
 
-  if (!open) {
+  // No passkey required — one click turns it on.
+  if (open) {
     return (
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={() => set(true)}
+        disabled={busy}
+        className="badge"
+        style={{ cursor: 'pointer', background: 'transparent', font: 'inherit', fontSize: 11 }}
+        title="Turn on demo mode — free seats, solo play allowed"
+      >
+        {busy ? 'enabling…' : error ? 'try again' : 'demo'}
+      </button>
+    );
+  }
+
+  if (!promptOpen) {
+    return (
+      <button
+        type="button"
+        onClick={() => setPromptOpen(true)}
         className="badge"
         style={{ cursor: 'pointer', background: 'transparent', font: 'inherit', fontSize: 11 }}
         title="Enter demo mode"
@@ -85,7 +101,7 @@ export default function DemoToggle({ active }: { active: boolean }) {
           <button type="submit" className="btn btn-primary btn-sm" style={{ flex: 1 }} disabled={busy}>
             {busy ? '…' : 'Enable'}
           </button>
-          <button type="button" onClick={() => setOpen(false)} className="btn btn-ghost btn-sm">
+          <button type="button" onClick={() => setPromptOpen(false)} className="btn btn-ghost btn-sm">
             Cancel
           </button>
         </div>

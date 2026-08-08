@@ -1,14 +1,15 @@
 import { NextResponse } from 'next/server';
-import { DEMO_COOKIE, demoAvailable } from '@/lib/demo';
+import { DEMO_COOKIE, demoAvailable, demoOpen } from '@/lib/demo';
 
 export const runtime = 'nodejs';
 
 /**
  * Turns demo mode on or off.
  *
- * Enabling requires the shared key. The cookie stores the key itself rather than a boolean, so a
- * forged `rte_demo=true` is worthless — the server compares it against DEMO_MODE_KEY on every
- * request rather than trusting the client's claim.
+ * When DEMO_MODE_OPEN is 'true' anyone may enable it with one click; otherwise the shared key is
+ * required. Either way the cookie stores the key itself rather than a boolean, so a forged
+ * `rte_demo=true` is worthless — the server compares it against DEMO_MODE_KEY on every request
+ * rather than trusting the client's claim.
  */
 export async function POST(req: Request) {
   if (!demoAvailable()) {
@@ -28,7 +29,8 @@ export async function POST(req: Request) {
     return res;
   }
 
-  if (String(body.key ?? '') !== process.env.DEMO_MODE_KEY) {
+  // Open mode skips the passkey entirely.
+  if (!demoOpen() && String(body.key ?? '') !== process.env.DEMO_MODE_KEY) {
     return NextResponse.json({ error: 'That key is not right.' }, { status: 403 });
   }
 

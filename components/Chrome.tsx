@@ -6,10 +6,12 @@ export function Header({
   signedIn,
   demoAvailable = false,
   demoActive = false,
+  demoOpen = false,
 }: {
   signedIn: boolean;
   demoAvailable?: boolean;
   demoActive?: boolean;
+  demoOpen?: boolean;
 }) {
   return (
     <header className="site-header">
@@ -19,7 +21,7 @@ export function Header({
           <GlitchWord text="realtimeescape.com" />
         </Link>
         <nav className="nav">
-          {demoAvailable && <DemoToggle active={demoActive} />}
+          {demoAvailable && <DemoToggle active={demoActive} open={demoOpen} />}
           <Link href="/games" className="hide-sm">Games</Link>
           <Link href="/demo" className="hide-sm">Try it</Link>
           <Link href="/how-it-works" className="hide-sm">How it works</Link>
