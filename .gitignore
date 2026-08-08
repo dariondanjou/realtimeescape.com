@@ -16,3 +16,8 @@ coverage/
 playwright-report/
 test-results/
 game-server/node_modules/
+
+.env*
+
+# TypeScript incremental build artifact
+tsconfig.tsbuildinfo
