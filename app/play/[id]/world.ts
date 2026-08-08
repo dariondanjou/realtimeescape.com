@@ -1,8 +1,11 @@
-// world.ts — Babylon.js graybox world for "Burn Window"
+// world.ts — Babylon.js world for "Burn Window", textured procedurally at load.
 // Client-side only. Art direction per docs/BURN_WINDOW_VISUAL_BIBLE.md:
-//   Z1 lounge = cool blue-grey (#768a9a) with three warm pendants (#e6946d) and a glossy floor;
-//   everything else = cockpit DNA (#768484 / #59696c / #92a4a7 / #252b2a) with the burnt-orange
-//   accent (#814525) reserved for interactables, hazard hardware and locked doors.
+//   Z1 lounge = ceramic-tiled blue-grey (#768a9a) with three warm pendants (#e6946d)
+//   and a mirror floor (the room's hero feature); everything else = cockpit DNA
+//   (#768484 / #59696c / #92a4a7 / #252b2a) built from one repeating panel module with
+//   seams and hex fasteners, with the burnt-orange accent (#814525) reserved for
+//   interactables, hazard hardware and locked doors. All textures are canvas-drawn —
+//   no downloads, CSP-safe, a few hundred KB of GPU memory total.
 
 import {
   AbstractMesh,
@@ -14,6 +17,8 @@ import {
   Matrix,
   Mesh,
   MeshBuilder,
+  MirrorTexture,
+  Plane,
   PointLight,
   Scalar,
   Scene,
@@ -22,6 +27,8 @@ import {
   TransformNode,
   UniversalCamera,
   Vector3,
+  Vector4,
+  VertexBuffer,
 } from '@babylonjs/core';
 
 // ---------------------------------------------------------------------------
@@ -144,14 +151,22 @@ const HEX = {
   shadowMetal: '#59696c',
   litPanel: '#92a4a7',
   recess: '#252b2a',
+  recessBlue: '#263033',
+  warmDark: '#3e3028',
+  warmMid: '#745b4d',
+  bright: '#b5c4c6',
   accent: '#814525',
   loungeWall: '#768a9a',
   loungeShadow: '#657a89',
+  loungeLit: '#8395a8',
   windowLight: '#95bad7',
   pendant: '#e6946d',
   earth: '#4a9fd0',
   avatar: '#c9dced',
 } as const;
+
+/** meters of world space covered by one repeat of a tiling texture */
+const TILE = 2;
 
 const INTERACT_RANGE = 3.5;
 const DOOR_ANIM_SECONDS = 0.6;
@@ -189,6 +204,354 @@ export function createWorld(canvas: HTMLCanvasElement, events: WorldEvents): Wor
   scene.collisionsEnabled = true;
   scene.gravity = new Vector3(0, 0, 0);
 
+  // -- procedural textures ----------------------------------------------------
+  // Everything is canvas-drawn at load: no downloads, CSP-safe, and a few hundred KB
+  // of GPU memory total. Palette and surface behavior per BURN_WINDOW_VISUAL_BIBLE.md.
+
+  const makeTex = (
+    name: string,
+    size: number,
+    draw: (ctx: CanvasRenderingContext2D, s: number) => void,
+  ): DynamicTexture => {
+    const t = new DynamicTexture(name, { width: size, height: size }, scene, true);
+    draw(t.getContext() as unknown as CanvasRenderingContext2D, size);
+    t.update(false);
+    return t;
+  };
+
+  /** even speckle so flat fills read as material rather than vector graphics */
+  const grain = (ctx: CanvasRenderingContext2D, s: number, amount: number, count = 1200): void => {
+    for (let i = 0; i < count; i++) {
+      const dark = Math.random() < 0.5;
+      ctx.fillStyle = dark ? `rgba(10,14,14,${Math.random() * amount})` : `rgba(230,238,238,${Math.random() * amount * 0.7})`;
+      ctx.fillRect(Math.random() * s, Math.random() * s, 1 + Math.random() * 2, 1 + Math.random() * 2);
+    }
+  };
+
+  const hexFastener = (ctx: CanvasRenderingContext2D, x: number, y: number, r: number): void => {
+    ctx.fillStyle = 'rgba(18,22,22,0.85)';
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(215,225,225,0.35)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2 + 0.26;
+      const px = x + Math.cos(a) * r * 0.55;
+      const py = y + Math.sin(a) * r * 0.55;
+      if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.stroke();
+  };
+
+  // The ship's one repeating panel module (bible Part 3): chamfered rectangle,
+  // visible seam gap, recessed hex fasteners. One TILE = two 1m panel courses.
+  const panelTex = (name: string, base: string, seam: string, chamfer: string): DynamicTexture =>
+    makeTex(name, 512, (ctx, s) => {
+      ctx.fillStyle = base;
+      ctx.fillRect(0, 0, s, s);
+      grain(ctx, s, 0.06);
+      const rowH = s / 2;
+      for (let row = 0; row < 2; row++) {
+        const y0 = row * rowH;
+        // seam gap around each panel
+        ctx.strokeStyle = seam;
+        ctx.lineWidth = 7;
+        ctx.strokeRect(3.5, y0 + 3.5, s - 7, rowH - 7);
+        // chamfer: light top/left edge, dark bottom/right edge
+        ctx.strokeStyle = chamfer;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(9, y0 + rowH - 9); ctx.lineTo(9, y0 + 9); ctx.lineTo(s - 9, y0 + 9);
+        ctx.stroke();
+        ctx.strokeStyle = 'rgba(12,16,16,0.5)';
+        ctx.beginPath();
+        ctx.moveTo(9, y0 + rowH - 9); ctx.lineTo(s - 9, y0 + rowH - 9); ctx.lineTo(s - 9, y0 + 9);
+        ctx.stroke();
+        for (const fx of [22, s - 22]) for (const fy of [y0 + 22, y0 + rowH - 22]) hexFastener(ctx, fx, fy, 7);
+      }
+    });
+
+  const texPanelBase = panelTex('texPanelBase', HEX.baseMetal, 'rgba(38,48,51,0.9)', 'rgba(202,212,212,0.4)');
+  const texPanelLit = panelTex('texPanelLit', HEX.litPanel, 'rgba(60,74,77,0.9)', 'rgba(214,224,224,0.45)');
+  const texPanelShadow = panelTex('texPanelShadow', HEX.shadowMetal, 'rgba(30,38,40,0.95)', 'rgba(160,175,175,0.35)');
+
+  // Lounge walls: small square ceramic tile, immaculate (bible Part 2D).
+  const texLoungeTile = makeTex('texLoungeTile', 512, (ctx, s) => {
+    ctx.fillStyle = HEX.loungeShadow;
+    ctx.fillRect(0, 0, s, s);
+    const n = 8; // 0.25m tiles
+    const t = s / n;
+    for (let i = 0; i < n; i++) {
+      for (let j = 0; j < n; j++) {
+        const v = 0.92 + Math.random() * 0.1;
+        ctx.fillStyle = `rgb(${Math.round(118 * v)},${Math.round(138 * v)},${Math.round(154 * v)})`;
+        ctx.fillRect(i * t + 1.5, j * t + 1.5, t - 3, t - 3);
+        // faint glaze highlight along the top of each tile
+        ctx.fillStyle = 'rgba(226,236,244,0.10)';
+        ctx.fillRect(i * t + 1.5, j * t + 1.5, t - 3, 3);
+      }
+    }
+    grain(ctx, s, 0.03, 500);
+  });
+
+  // Lounge floor: larger polished tile — the mirror does the real work.
+  const texLoungeFloor = makeTex('texLoungeFloor', 512, (ctx, s) => {
+    ctx.fillStyle = '#5b7487';
+    ctx.fillRect(0, 0, s, s);
+    const n = 4; // 0.5m tiles
+    const t = s / n;
+    for (let i = 0; i < n; i++) {
+      for (let j = 0; j < n; j++) {
+        const v = 0.94 + Math.random() * 0.08;
+        ctx.fillStyle = `rgb(${Math.round(101 * v)},${Math.round(122 * v)},${Math.round(137 * v)})`;
+        ctx.fillRect(i * t + 2, j * t + 2, t - 4, t - 4);
+      }
+    }
+    grain(ctx, s, 0.025, 400);
+  });
+
+  // Crew-side floors: deck plate with fasteners and honest wear at contact points.
+  const texDeck = makeTex('texDeck', 512, (ctx, s) => {
+    ctx.fillStyle = '#4e5c5f';
+    ctx.fillRect(0, 0, s, s);
+    const t = s / 2; // 1m plates
+    for (let i = 0; i < 2; i++) {
+      for (let j = 0; j < 2; j++) {
+        const v = 0.93 + Math.random() * 0.12;
+        ctx.fillStyle = `rgb(${Math.round(89 * v)},${Math.round(105 * v)},${Math.round(108 * v)})`;
+        ctx.fillRect(i * t + 3, j * t + 3, t - 6, t - 6);
+        ctx.strokeStyle = 'rgba(24,30,31,0.6)';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(i * t + 3, j * t + 3, t - 6, t - 6);
+        for (const fx of [i * t + 16, i * t + t - 16]) for (const fy of [j * t + 16, j * t + t - 16]) hexFastener(ctx, fx, fy, 6);
+      }
+    }
+    // scuffs: short low-alpha strokes, mostly through the middle of the walkway
+    for (let i = 0; i < 70; i++) {
+      const x = Math.random() * s;
+      const y = Math.random() * s;
+      const len = 12 + Math.random() * 44;
+      const a = Math.random() * Math.PI;
+      ctx.strokeStyle = Math.random() < 0.6 ? 'rgba(20,26,26,0.13)' : 'rgba(196,206,206,0.08)';
+      ctx.lineWidth = 1 + Math.random() * 2;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + Math.cos(a) * len, y + Math.sin(a) * len);
+      ctx.stroke();
+    }
+    grain(ctx, s, 0.05);
+  });
+
+  // Coffered ceiling: recessed dark bays in a pale frame grid (diffuse), each bay
+  // carrying one linear fluorescent fixture (emissive) at low intensity — the bible's
+  // "practicals barely brighter than the surfaces they light".
+  const texCeiling = makeTex('texCeiling', 512, (ctx, s) => {
+    ctx.fillStyle = HEX.baseMetal;
+    ctx.fillRect(0, 0, s, s);
+    ctx.fillStyle = HEX.recessBlue;
+    ctx.fillRect(26, 26, s - 52, s - 52);
+    ctx.strokeStyle = 'rgba(12,16,16,0.6)';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(26, 26, s - 52, s - 52);
+    ctx.strokeStyle = 'rgba(202,212,212,0.3)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(22, 22, s - 44, s - 44);
+    grain(ctx, s, 0.05);
+  });
+  const texCeilingGlow = makeTex('texCeilingGlow', 512, (ctx, s) => {
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(0, 0, s, s);
+    ctx.save();
+    ctx.shadowColor = 'rgba(190,208,210,0.9)';
+    ctx.shadowBlur = 26;
+    ctx.fillStyle = 'rgb(172,190,192)';
+    ctx.fillRect(s * 0.2, s * 0.44, s * 0.6, s * 0.12);
+    ctx.restore();
+  });
+
+  // Door: single bespoke face — center seam, high slot window, hardware, hazard chevrons.
+  const texDoor = makeTex('texDoor', 512, (ctx, s) => {
+    ctx.fillStyle = HEX.litPanel;
+    ctx.fillRect(0, 0, s, s);
+    grain(ctx, s, 0.06);
+    ctx.strokeStyle = 'rgba(38,48,51,0.9)';
+    ctx.lineWidth = 8;
+    ctx.strokeRect(4, 4, s - 8, s - 8);
+    // center split seam
+    ctx.fillStyle = 'rgba(24,30,31,0.9)';
+    ctx.fillRect(s / 2 - 3, 8, 6, s - 16);
+    // high slot window with a cool inner glow
+    ctx.fillStyle = '#10161a';
+    ctx.fillRect(s * 0.18, s * 0.14, s * 0.64, s * 0.12);
+    ctx.strokeStyle = 'rgba(149,186,215,0.5)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(s * 0.18 + 3, s * 0.14 + 3, s * 0.64 - 6, s * 0.12 - 6);
+    // hardware plates either side of the seam
+    for (const hx of [s * 0.34, s * 0.6]) {
+      ctx.fillStyle = 'rgba(62,48,40,0.95)';
+      ctx.fillRect(hx, s * 0.52, s * 0.06, s * 0.16);
+      hexFastener(ctx, hx + s * 0.03, s * 0.54, 5);
+      hexFastener(ctx, hx + s * 0.03, s * 0.66, 5);
+    }
+    // hazard chevron strip along the foot
+    for (let x = 0; x < s; x += 40) {
+      ctx.fillStyle = (x / 40) % 2 === 0 ? HEX.accent : HEX.warmDark;
+      ctx.beginPath();
+      ctx.moveTo(x, s - 8);
+      ctx.lineTo(x + 20, s - 30);
+      ctx.lineTo(x + 40, s - 8);
+      ctx.closePath();
+      ctx.fill();
+    }
+    for (const fx of [18, s - 18]) for (const fy of [18, s - 18]) hexFastener(ctx, fx, fy, 8);
+  });
+
+  // Diagonal hazard striping for floor strips and console edges.
+  const texHazard = makeTex('texHazard', 256, (ctx, s) => {
+    ctx.fillStyle = HEX.warmDark;
+    ctx.fillRect(0, 0, s, s);
+    ctx.fillStyle = HEX.accent;
+    for (let x = -s; x < s * 2; x += 64) {
+      ctx.beginPath();
+      ctx.moveTo(x, s);
+      ctx.lineTo(x + s, 0);
+      ctx.lineTo(x + s + 32, 0);
+      ctx.lineTo(x + 32, s);
+      ctx.closePath();
+      ctx.fill();
+    }
+    grain(ctx, s, 0.07, 400);
+  });
+
+  // Seat fabric: the palette's warm dark — the one warmth the lounge is allowed.
+  const texSeat = makeTex('texSeat', 256, (ctx, s) => {
+    ctx.fillStyle = HEX.warmDark;
+    ctx.fillRect(0, 0, s, s);
+    for (let y = 0; y < s; y += 4) {
+      ctx.strokeStyle = `rgba(116,91,77,${0.10 + Math.random() * 0.10})`;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(s, y + (Math.random() - 0.5) * 3);
+      ctx.stroke();
+    }
+    // cushion seams
+    ctx.strokeStyle = 'rgba(20,14,10,0.8)';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(0, s * 0.38); ctx.lineTo(s, s * 0.38);
+    ctx.moveTo(0, s * 0.72); ctx.lineTo(s, s * 0.72);
+    ctx.stroke();
+    grain(ctx, s, 0.06, 600);
+  });
+
+  // Console housing: dark rubber-polymer with a restrained accent edge.
+  const texConsole = makeTex('texConsole', 256, (ctx, s) => {
+    ctx.fillStyle = HEX.recessBlue;
+    ctx.fillRect(0, 0, s, s);
+    grain(ctx, s, 0.08, 900);
+    ctx.strokeStyle = 'rgba(129,69,37,0.85)';
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(6, 10); ctx.lineTo(s - 6, 10);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(12,16,16,0.7)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(8, 8, s - 16, s - 16);
+    for (const fx of [20, s - 20]) for (const fy of [24, s - 24]) hexFastener(ctx, fx, fy, 6);
+  });
+
+  // Interactable faceplate: warm-dark plate, accent frame, a dark readout slot.
+  const texFaceplate = makeTex('texFaceplate', 256, (ctx, s) => {
+    ctx.fillStyle = HEX.warmDark;
+    ctx.fillRect(0, 0, s, s);
+    grain(ctx, s, 0.07, 600);
+    ctx.strokeStyle = HEX.accent;
+    ctx.lineWidth = 8;
+    ctx.strokeRect(6, 6, s - 12, s - 12);
+    ctx.fillStyle = '#141c1e';
+    ctx.fillRect(s * 0.18, s * 0.22, s * 0.64, s * 0.3);
+    ctx.strokeStyle = 'rgba(146,164,167,0.5)';
+    ctx.lineWidth = 1;
+    for (let y = s * 0.28; y < s * 0.5; y += 8) {
+      ctx.beginPath();
+      ctx.moveTo(s * 0.22, y);
+      ctx.lineTo(s * 0.22 + (0.3 + Math.random() * 0.26) * s, y);
+      ctx.stroke();
+    }
+    for (const fx of [20, s - 20]) for (const fy of [20, s - 20]) hexFastener(ctx, fx, fy, 7);
+  });
+
+  // Interactable equipment unit: cool body, vents, warm grip edge.
+  const texUnit = makeTex('texUnit', 256, (ctx, s) => {
+    ctx.fillStyle = HEX.shadowMetal;
+    ctx.fillRect(0, 0, s, s);
+    grain(ctx, s, 0.07, 700);
+    ctx.strokeStyle = 'rgba(24,30,31,0.8)';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(6, 6, s - 12, s - 12);
+    ctx.fillStyle = 'rgba(18,24,24,0.75)';
+    for (let y = s * 0.2; y < s * 0.5; y += 14) ctx.fillRect(s * 0.16, y, s * 0.4, 6);
+    ctx.fillStyle = HEX.warmMid;
+    ctx.fillRect(s * 0.16, s * 0.68, s * 0.68, s * 0.1);
+    for (const fx of [18, s - 18]) for (const fy of [18, s - 18]) hexFastener(ctx, fx, fy, 6);
+  });
+
+  // Earth, drawn honestly enough to hold up at 20 meters: ocean, continents,
+  // cloud streaks, a polar cap.
+  const texEarthMap = makeTex('texEarthMap', 512, (ctx, s) => {
+    const ocean = ctx.createLinearGradient(0, 0, 0, s);
+    ocean.addColorStop(0, '#1e4a72');
+    ocean.addColorStop(0.5, '#2f6f9e');
+    ocean.addColorStop(1, '#1a3f63');
+    ctx.fillStyle = ocean;
+    ctx.fillRect(0, 0, s, s);
+    // continents: clustered blobs, desaturated
+    for (let c = 0; c < 9; c++) {
+      const cx = Math.random() * s;
+      const cy = s * 0.15 + Math.random() * s * 0.7;
+      const tone = Math.random() < 0.5 ? '#5c6e4a' : '#7a6f52';
+      ctx.fillStyle = tone;
+      for (let b = 0; b < 14; b++) {
+        const r = 8 + Math.random() * 30;
+        ctx.beginPath();
+        ctx.arc(cx + (Math.random() - 0.5) * 90, cy + (Math.random() - 0.5) * 60, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    // polar cap
+    ctx.fillStyle = 'rgba(226,236,242,0.9)';
+    ctx.fillRect(0, 0, s, s * 0.07);
+    ctx.fillStyle = 'rgba(226,236,242,0.45)';
+    ctx.fillRect(0, s * 0.07, s, s * 0.04);
+    // cloud streaks, roughly zonal
+    for (let i = 0; i < 26; i++) {
+      const y = Math.random() * s;
+      const x = Math.random() * s;
+      const len = 40 + Math.random() * 140;
+      ctx.strokeStyle = `rgba(240,246,250,${0.14 + Math.random() * 0.22})`;
+      ctx.lineWidth = 4 + Math.random() * 9;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.quadraticCurveTo(x + len * 0.5, y + (Math.random() - 0.5) * 22, x + len, y + (Math.random() - 0.5) * 10);
+      ctx.stroke();
+    }
+  });
+
+  // Deep space: not flat black — a barely-there cold gradient.
+  const texSpace = makeTex('texSpace', 256, (ctx, s) => {
+    const g = ctx.createLinearGradient(0, 0, 0, s);
+    g.addColorStop(0, '#05080d');
+    g.addColorStop(0.65, '#020407');
+    g.addColorStop(1, '#010203');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, s, s);
+  });
+
   // -- materials ------------------------------------------------------------
 
   const satin = (name: string, hex: string): StandardMaterial => {
@@ -199,26 +562,52 @@ export function createWorld(canvas: HTMLCanvasElement, events: WorldEvents): Wor
     return m;
   };
 
-  const matBase = satin('matBase', HEX.baseMetal);
-  const matShadow = satin('matShadow', HEX.shadowMetal);
-  const matPanel = satin('matPanel', HEX.litPanel);
-  const matRecess = satin('matRecess', HEX.recess);
-  const matLoungeWall = satin('matLoungeWall', HEX.loungeWall);
-  const matSeat = satin('matSeat', HEX.loungeShadow);
+  const textured = (name: string, tex: DynamicTexture, specular = 0.09, power = 24): StandardMaterial => {
+    const m = new StandardMaterial(name, scene);
+    m.diffuseTexture = tex;
+    m.specularColor = new Color3(specular, specular * 1.05, specular * 1.05);
+    m.specularPower = power;
+    return m;
+  };
 
-  // Z1 glossy floor: high, tight specular return (the room's hero feature).
+  const matBase = textured('matBase', texPanelBase);
+  const matShadow = textured('matShadow', texPanelShadow);
+  const matPanel = textured('matPanel', texPanelLit, 0.11, 32);
+  const matRecess = satin('matRecess', HEX.recess);
+  const matLoungeWall = textured('matLoungeWall', texLoungeTile, 0.16, 48);
+  const matSeat = textured('matSeat', texSeat, 0.03, 8);
+  const matConsole = textured('matConsole', texConsole, 0.05, 12);
+  const matDeck = textured('matDeck', texDeck, 0.07, 20);
+
+  const matCeiling = new StandardMaterial('matCeiling', scene);
+  matCeiling.diffuseTexture = texCeiling;
+  matCeiling.emissiveTexture = texCeilingGlow;
+  matCeiling.specularColor = new Color3(0.03, 0.03, 0.03);
+
+  // Z1 glossy floor: tile diffuse + a true planar mirror (the room's hero feature —
+  // bible 2B: "budget for it rather than cutting it as an optimization").
   const matLoungeFloor = new StandardMaterial('matLoungeFloor', scene);
-  matLoungeFloor.diffuseColor = Color3.FromHexString(HEX.loungeShadow);
-  matLoungeFloor.specularColor = new Color3(0.75, 0.85, 0.95);
+  matLoungeFloor.diffuseTexture = texLoungeFloor;
+  matLoungeFloor.specularColor = new Color3(0.5, 0.58, 0.65);
   matLoungeFloor.specularPower = 96;
 
-  const matFloor = satin('matFloor', HEX.shadowMetal);
+  const matFloor = matDeck;
 
   const accentColor = Color3.FromHexString(HEX.accent);
   const matHazard = new StandardMaterial('matHazard', scene);
-  matHazard.diffuseColor = accentColor.clone();
-  matHazard.emissiveColor = accentColor.scale(0.2);
+  matHazard.diffuseTexture = texHazard;
+  matHazard.emissiveColor = accentColor.scale(0.12);
   matHazard.specularColor = new Color3(0.05, 0.05, 0.05);
+
+  const matDoor = new StandardMaterial('matDoor', scene);
+  matDoor.diffuseTexture = texDoor;
+  matDoor.specularColor = new Color3(0.1, 0.11, 0.11);
+  matDoor.specularPower = 32;
+
+  const matFixture = new StandardMaterial('matFixture', scene);
+  matFixture.emissiveColor = new Color3(0.72, 0.79, 0.8); // fixtures barely brighter than surfaces
+  matFixture.diffuseColor = Color3.Black();
+  matFixture.disableLighting = true;
 
   const matGlass = new StandardMaterial('matGlass', scene);
   matGlass.diffuseColor = Color3.FromHexString(HEX.windowLight);
@@ -227,8 +616,8 @@ export function createWorld(canvas: HTMLCanvasElement, events: WorldEvents): Wor
   matGlass.specularColor = new Color3(0.4, 0.5, 0.6);
 
   const matSpace = new StandardMaterial('matSpace', scene);
+  matSpace.emissiveTexture = texSpace;
   matSpace.diffuseColor = Color3.Black();
-  matSpace.emissiveColor = new Color3(0.012, 0.018, 0.03);
   matSpace.disableLighting = true;
 
   const matStar = new StandardMaterial('matStar', scene);
@@ -236,9 +625,15 @@ export function createWorld(canvas: HTMLCanvasElement, events: WorldEvents): Wor
   matStar.disableLighting = true;
 
   const matEarth = new StandardMaterial('matEarth', scene);
-  matEarth.emissiveColor = Color3.FromHexString(HEX.earth);
+  matEarth.emissiveTexture = texEarthMap;
   matEarth.diffuseColor = Color3.Black();
   matEarth.disableLighting = true;
+
+  const matAtmo = new StandardMaterial('matAtmo', scene);
+  matAtmo.emissiveColor = new Color3(0.55, 0.75, 0.9);
+  matAtmo.diffuseColor = Color3.Black();
+  matAtmo.alpha = 0.14;
+  matAtmo.disableLighting = true;
 
   const matPendant = new StandardMaterial('matPendant', scene);
   matPendant.emissiveColor = Color3.FromHexString(HEX.pendant);
@@ -247,6 +642,14 @@ export function createWorld(canvas: HTMLCanvasElement, events: WorldEvents): Wor
 
   const matAvatar = satin('matAvatar', HEX.avatar);
   const matVisor = satin('matVisor', HEX.recess);
+
+  // Space stays crisp through the window; only the interior gets the distance haze
+  // (bible 2B: "slight atmospheric softening in the deep background").
+  scene.fogMode = Scene.FOGMODE_LINEAR;
+  scene.fogStart = 22;
+  scene.fogEnd = 95;
+  scene.fogColor = new Color3(0.055, 0.075, 0.09);
+  for (const m of [matSpace, matStar, matEarth, matAtmo, matGlass]) m.fogEnabled = false;
 
   // -- lighting (budget: 11 lights total) -----------------------------------
 
@@ -283,8 +686,31 @@ export function createWorld(canvas: HTMLCanvasElement, events: WorldEvents): Wor
 
   // -- structure helpers ----------------------------------------------------
 
+  // Per-face UV tiling keeps the 2m panel module at true scale on every wall,
+  // whatever its dimensions, while sharing one material. Box face pairs: 0/1 are
+  // the z-normal faces (w×h), 2/3 the x-normal (d×h), 4/5 top and bottom (w×d).
+  const tiledFaceUV = (w: number, h: number, d: number): Vector4[] => [
+    new Vector4(0, 0, w / TILE, h / TILE),
+    new Vector4(0, 0, w / TILE, h / TILE),
+    new Vector4(0, 0, d / TILE, h / TILE),
+    new Vector4(0, 0, d / TILE, h / TILE),
+    new Vector4(0, 0, w / TILE, d / TILE),
+    new Vector4(0, 0, w / TILE, d / TILE),
+  ];
+
+  const scaleUV = (mesh: Mesh, u: number, v: number): void => {
+    const uvs = mesh.getVerticesData(VertexBuffer.UVKind);
+    if (!uvs) return;
+    const out = new Float32Array(uvs.length);
+    for (let i = 0; i < uvs.length; i += 2) {
+      out[i] = uvs[i] * u;
+      out[i + 1] = uvs[i + 1] * v;
+    }
+    mesh.setVerticesData(VertexBuffer.UVKind, out);
+  };
+
   const wallBox = (name: string, cx: number, cz: number, sx: number, sz: number, mat: StandardMaterial): Mesh => {
-    const m = MeshBuilder.CreateBox(name, { width: sx, height: 3, depth: sz }, scene);
+    const m = MeshBuilder.CreateBox(name, { width: sx, height: 3, depth: sz, faceUV: tiledFaceUV(sx, 3, sz) }, scene);
     m.position.set(cx, 1.5, cz);
     m.material = mat;
     m.checkCollisions = true;
@@ -303,6 +729,7 @@ export function createWorld(canvas: HTMLCanvasElement, events: WorldEvents): Wor
   const floorRect = (name: string, xMin: number, xMax: number, zMin: number, zMax: number, mat: StandardMaterial): Mesh => {
     const g = MeshBuilder.CreateGround(name, { width: xMax - xMin, height: zMax - zMin }, scene);
     g.position.set((xMin + xMax) / 2, 0, (zMin + zMax) / 2);
+    scaleUV(g, (xMax - xMin) / TILE, (zMax - zMin) / TILE);
     g.material = mat;
     g.checkCollisions = true;
     g.freezeWorldMatrix();
@@ -321,19 +748,40 @@ export function createWorld(canvas: HTMLCanvasElement, events: WorldEvents): Wor
   floorRect('floorZ7', 2, 14, -12, -4, matFloor);
   floorRect('floorZ8', -3, 3, -18, -12, matFloor);
 
-  // ceiling — one dark slab over everything for enclosure
-  const ceiling = MeshBuilder.CreateBox('ceiling', { width: 30, height: 0.12, depth: 56 }, scene);
+  // ceiling — coffered grid of recessed bays, each with a low-key linear fixture
+  const ceiling = MeshBuilder.CreateBox('ceiling', { width: 30, height: 0.12, depth: 56, faceUV: tiledFaceUV(30, 0.12, 56) }, scene);
   ceiling.position.set(0, 3.06, 9.5);
-  ceiling.material = matRecess;
+  ceiling.material = matCeiling;
   ceiling.freezeWorldMatrix();
+
+  // physical fixture bars where the cool lights actually are, so the illumination
+  // reads as motivated rather than ambient
+  const fixtureBar = (x: number, z: number, along: 'x' | 'z' = 'x'): void => {
+    const bar = MeshBuilder.CreateBox(`fixture_${x}_${z}`, {
+      width: along === 'x' ? 1.7 : 0.24,
+      height: 0.06,
+      depth: along === 'x' ? 0.24 : 1.7,
+    }, scene);
+    bar.position.set(x, 2.97, z);
+    bar.material = matFixture;
+    bar.isPickable = false;
+    bar.freezeWorldMatrix();
+  };
+  fixtureBar(-7.5, 17); fixtureBar(7.5, 17);          // galley, crew quarters
+  fixtureBar(-8, -8); fixtureBar(8, -8); fixtureBar(0, -15); // bays
+  fixtureBar(-3, 5.5); fixtureBar(3, 5.5);            // flight deck
+  fixtureBar(0, 13, 'z'); fixtureBar(0, 17, 'z'); fixtureBar(0, 21, 'z'); // corridor
+  fixtureBar(0, -3, 'z'); fixtureBar(0, -9, 'z');     // aft passage
 
   // -- walls ----------------------------------------------------------------
 
-  // Z1 lounge (blue-grey walls); forward wall z=37 is the window (collidable glass below)
-  wallX('z1_aft_w', 23, -9, -1.5, matLoungeWall);
-  wallX('z1_aft_e', 23, 1.5, 9, matLoungeWall);
-  wallZ('z1_west', -9, 23, 37, matLoungeWall);
-  wallZ('z1_east', 9, 23, 37, matLoungeWall);
+  // Z1 lounge (tiled blue-grey walls); forward wall z=37 is the window (collidable glass below)
+  const loungeWalls = [
+    wallX('z1_aft_w', 23, -9, -1.5, matLoungeWall),
+    wallX('z1_aft_e', 23, 1.5, 9, matLoungeWall),
+    wallZ('z1_west', -9, 23, 37, matLoungeWall),
+    wallZ('z1_east', 9, 23, 37, matLoungeWall),
+  ];
 
   // Z2 corridor (openings to Z3/Z4 at z 15..19)
   wallZ('z2_w_a', -2, 11, 15, matBase);
@@ -395,25 +843,37 @@ export function createWorld(canvas: HTMLCanvasElement, events: WorldEvents): Wor
   space.material = matSpace;
   space.freezeWorldMatrix();
 
-  // ~80 tiny star dots as thin instances of one small plane
+  // ~100 star dots as thin instances of one small plane; a few reads brighter,
+  // done with scale rather than a second material
   const starBase = MeshBuilder.CreatePlane('stars', { size: 0.16, sideOrientation: Mesh.DOUBLESIDE }, scene);
   starBase.material = matStar;
   starBase.isPickable = false;
-  for (let i = 0; i < 80; i++) {
+  for (let i = 0; i < 100; i++) {
     const sx = (Math.random() - 0.5) * 70;
     const sy = -6 + Math.random() * 24;
     const sz = 50.5 + Math.random() * 1.2;
-    starBase.thinInstanceAdd(Matrix.Translation(sx, sy, sz), i === 79);
+    const scale = Math.random() < 0.15 ? 1.8 : 0.7 + Math.random() * 0.8;
+    const m = Matrix.Scaling(scale, scale, 1).multiply(Matrix.Translation(sx, sy, sz));
+    starBase.thinInstanceAdd(m, i === 99);
   }
 
   const earth = MeshBuilder.CreateSphere('earth', { diameter: 12, segments: 24 }, scene);
   earth.position.set(7, -1.5, 49);
+  earth.rotation.z = 0.35; // tilt the polar cap off vertical
   earth.material = matEarth;
   earth.isPickable = false;
   earth.freezeWorldMatrix();
 
+  // thin luminous rim so the planet sits in space instead of on it
+  const atmo = MeshBuilder.CreateSphere('earthAtmo', { diameter: 12.7, segments: 24 }, scene);
+  atmo.position.copyFrom(earth.position);
+  atmo.material = matAtmo;
+  atmo.isPickable = false;
+  atmo.freezeWorldMatrix();
+
   // -- Z1 set dressing: seats + pendants ------------------------------------
 
+  const loungeSeats: Mesh[] = [];
   for (const sz of [29, 32.5]) {
     for (const sx of [-6, -3, 3, 6]) {
       const seat = MeshBuilder.CreateBox(`seat_${sx}_${sz}`, { width: 0.9, height: 1.2, depth: 0.9 }, scene);
@@ -421,9 +881,11 @@ export function createWorld(canvas: HTMLCanvasElement, events: WorldEvents): Wor
       seat.material = matSeat;
       seat.checkCollisions = true;
       seat.freezeWorldMatrix();
+      loungeSeats.push(seat);
     }
   }
 
+  const pendantBulbs: Mesh[] = [];
   for (const pz of [26, 30, 34]) {
     const cord = MeshBuilder.CreateCylinder(`pendantCord_${pz}`, { height: 0.55, diameter: 0.03 }, scene);
     cord.position.set(0, 2.75, pz);
@@ -434,12 +896,22 @@ export function createWorld(canvas: HTMLCanvasElement, events: WorldEvents): Wor
     bulb.material = matPendant;
     bulb.isPickable = false;
     bulb.freezeWorldMatrix();
+    pendantBulbs.push(bulb);
     const warm = new PointLight(`lPendant_${pz}`, new Vector3(0, 2.3, pz), scene);
     warm.diffuse = Color3.FromHexString(HEX.pendant);
     warm.specular = Color3.FromHexString(HEX.pendant).scale(0.5);
     warm.intensity = 0.4;
     warm.range = 9;
   }
+
+  // The lounge floor's planar mirror: renders only what the lounge can see of
+  // itself — window, space, Earth, seats, walls, pendants. Doubling the room is
+  // this location's signature (visual bible, Part 2).
+  const mirror = new MirrorTexture('loungeMirror', 512, scene, true);
+  mirror.mirrorPlane = new Plane(0, -1, 0, 0);
+  mirror.renderList = [glass, space, starBase, earth, atmo, ...loungeWalls, ...loungeSeats, ...pendantBulbs];
+  mirror.level = 0.32;
+  matLoungeFloor.reflectionTexture = mirror;
 
   // -- Z5 set dressing: crew seats + console slabs --------------------------
 
@@ -452,12 +924,12 @@ export function createWorld(canvas: HTMLCanvasElement, events: WorldEvents): Wor
   }
   const navSlab = MeshBuilder.CreateBox('navSlab', { width: 2.6, height: 0.9, depth: 0.9 }, scene);
   navSlab.position.set(0, 0.45, 1.6);
-  navSlab.material = matRecess;
+  navSlab.material = matConsole;
   navSlab.checkCollisions = true;
   navSlab.freezeWorldMatrix();
   const burnSlab = MeshBuilder.CreateBox('burnSlab', { width: 4, height: 1, depth: 0.9 }, scene);
   burnSlab.position.set(0, 0.5, 10.1);
-  burnSlab.material = matRecess;
+  burnSlab.material = matConsole;
   burnSlab.checkCollisions = true;
   burnSlab.freezeWorldMatrix();
 
@@ -513,7 +985,7 @@ export function createWorld(canvas: HTMLCanvasElement, events: WorldEvents): Wor
 
     const panel = MeshBuilder.CreateBox(`doorPanel_${id}`, { width: 3, height: 3, depth: 0.24 }, scene);
     panel.position.set(0, 1.5, zp);
-    panel.material = matPanel;
+    panel.material = matDoor;
     panel.checkCollisions = true;
 
     doors.set(id, { panel, frameMat, t: 0, target: 0 });
@@ -543,8 +1015,18 @@ export function createWorld(canvas: HTMLCanvasElement, events: WorldEvents): Wor
     mesh.position.set(def.x, def.y, def.z);
     if (def.ry !== undefined) mesh.rotation.y = def.ry;
 
+    // Panels and boxes carry drawn faceplates; the hover pulse stays on emissiveColor,
+    // which composes with a diffuse texture but would be overridden by an emissive one.
     const mat = new StandardMaterial(`intMat_${def.id}`, scene);
-    mat.diffuseColor = accentColor.clone();
+    if (def.kind === 'panel') {
+      mat.diffuseTexture = texFaceplate;
+      mat.diffuseColor = Color3.White();
+    } else if (def.kind === 'box') {
+      mat.diffuseTexture = texUnit;
+      mat.diffuseColor = Color3.White();
+    } else {
+      mat.diffuseColor = accentColor.clone();
+    }
     mat.emissiveColor = accentColor.scale(BASE_EMISSIVE);
     mat.specularColor = new Color3(0.1, 0.08, 0.06);
     mesh.material = mat;

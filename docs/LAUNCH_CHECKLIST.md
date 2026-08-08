@@ -75,17 +75,9 @@ All four are guarded and safe to re-run.
 **Also done:** the private **`feedback-audio`** storage bucket exists (created via the Storage
 API), and `ANTHROPIC_API_KEY`, `CONSENT_IP_SALT` and `DEMO_MODE_KEY` are set in Vercel production.
 
-### 1b. Top up the Anthropic account  ← **the live gap**
+### 1b. ~~Top up the Anthropic account~~ — **DONE, 8 August 2026**
 
-The API key is correct and installed — it authenticates fine, and is rejected on **billing**:
-
-```
-400 "Your credit balance is too low to access the Anthropic API"
-```
-
-Until it is topped up, AI triage and feedback collation stay in their fallback modes: issue reports
-are stored and routed to a human, and feedback is stored with `topic_id` null awaiting a collation
-sweep. Nothing breaks; the automation simply does not run, and `/roadmap` stays empty.
+The account is funded; AI triage and feedback collation are fully live.
 
 **Or from the CLI**, if you supply the database password:
 
@@ -158,21 +150,23 @@ Rotate the key any time with `vercel env rm DEMO_MODE_KEY production` followed b
 `vercel env add`. Removing the variable entirely makes demo mode unreachable — the toggle
 disappears and the API returns 404.
 
-### 5. Legal review of the recording defaults  ← **blocking for EU/UK sales**
-
-Images and video are captured and usable publicly **by default, with an opt-out**. That is a
-deliberate product decision with real jurisdictional exposure — GDPR generally requires affirmative
-consent for marketing use of a recognisable person's image, and several US states have their own
-biometric and likeness statutes. Team voice is already opt-in everywhere.
-
-The schema supports flipping images and video to opt-in per region by changing one default
-(`rte_session_consents.media_social_use`). Get this reviewed before taking money in the EU or UK.
-
-### 6. Transactional email
+### 5. Transactional email
 
 No provider is wired. Booking confirmations, invitations and results are currently surfaced
 on-page rather than emailed. Pick a provider, then send: booking confirmation, invitation,
 24-hour reminder, lobby-open notice, results.
+
+---
+
+## BACKGROUND NOTES — not on the active to-do list
+
+**Legal review of the recording defaults.** Images and video are captured and usable publicly
+**by default, with an opt-out** — a deliberate product decision with jurisdictional exposure
+(GDPR generally requires affirmative consent for marketing use of a recognisable person's image;
+several US states have biometric/likeness statutes). Team voice is already opt-in everywhere.
+The schema supports flipping images and video to opt-in per region by changing one default
+(`rte_session_consents.media_social_use`). Get this reviewed before taking money in the EU or UK.
+Until then it blocks nothing.
 
 ---
 
