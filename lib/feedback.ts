@@ -54,9 +54,13 @@ const COLLATION_SCHEMA = {
         title: { type: 'string', description: 'One short line naming the problem or request.' },
         summary: { type: 'string', description: 'Two or three sentences describing the issue neutrally.' },
         kind: { type: 'string', enum: ['bug', 'feature', 'praise', 'confusion', 'other'] },
+        // A nullable enum must use anyOf. Declaring `type: ['string','null']` alongside an
+        // `enum` is rejected: "Enum value 'minor' does not match declared type ['string','null']".
         severity: {
-          type: ['string', 'null'],
-          enum: ['minor', 'moderate', 'major', null],
+          anyOf: [
+            { type: 'string', enum: ['minor', 'moderate', 'major'] },
+            { type: 'null' },
+          ],
           description: 'For bugs: how badly it damages the experience. Null for non-bugs.',
         },
         effort: {
