@@ -47,7 +47,7 @@ console.log(`Burn Window solvability — ${SEED_COUNT} seeds × player counts 3�
 for (let i = 0; i < SEED_COUNT; i++) {
   const seed = `seed-${i.toString(36)}-${(i * 2654435761) % 1e9}`;
 
-  for (let players = 3; players <= 8; players++) {
+  for (let players = 1; players <= 8; players++) {
     const { liveStations, stages } = scaleForPlayers(players);
     let plan;
     try {

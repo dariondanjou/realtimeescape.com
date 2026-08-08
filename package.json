@@ -14,8 +14,10 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",
+    "@babylonjs/core": "^9.20.0",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.47.10",
+    "colyseus.js": "^0.16.22",
     "next": "^15.1.6",
     "pg": "^8.22.0",
     "react": "^19.0.0",

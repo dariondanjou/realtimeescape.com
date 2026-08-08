@@ -1,19 +1,18 @@
 import { Room } from 'colyseus';
-import { Schema, MapSchema, ArraySchema, type, defineTypes } from '@colyseus/schema';
+import { Schema, MapSchema, ArraySchema, defineTypes } from '@colyseus/schema';
 import {
   generateManeuver, validateBurn, scaleForPlayers, readinessView, SETBACK_MS, STATION_NAMES,
 } from '../shared/burn.mjs';
+import { generateContent, PuzzleEngine, DOOR_RULES } from '../rooms/burn-window/content/puzzles.mjs';
 
 /* -------------------------------------------------------------------------- */
 /* State schema                                                               */
+/*                                                                            */
+/* @colyseus/schema 3.x does not auto-instantiate MapSchema/ArraySchema       */
+/* fields and will not encode undefined primitives, so every class            */
+/* initialises its own fields.                                                */
 /* -------------------------------------------------------------------------- */
 
-/**
- * @colyseus/schema 3.x does not auto-instantiate MapSchema/ArraySchema fields, and it will not
- * encode `undefined` primitives. Every state class therefore initialises its own fields in a
- * constructor — without this, onJoin fails with "Cannot read properties of undefined (reading
- * 'set')" the moment a client tries to join.
- */
 class PlayerState extends Schema {
   constructor(init = {}) {
     super();
@@ -26,18 +25,20 @@ class PlayerState extends Schema {
     this.heldObject = '';
     this.voiceActive = false;
     this.connected = true;
+    this.ready = false;
   }
 }
 defineTypes(PlayerState, {
   seatId: 'string',
   displayName: 'string',
   avatarPreset: 'string',
-  zone: 'string',        // Z1..Z8
+  zone: 'string',
   x: 'number', y: 'number', z: 'number', ry: 'number',
-  locomotion: 'string',  // idle | walk | inspect | carry | contextual
+  locomotion: 'string',
   heldObject: 'string',
   voiceActive: 'boolean',
   connected: 'boolean',
+  ready: 'boolean',
 });
 
 class StationState extends Schema {
@@ -61,7 +62,6 @@ defineTypes(StationState, {
   interlockCleared: 'boolean',
   armed: 'boolean',
   dialsTouched: 'boolean',
-  // Panel values are NOT replicated to every client — see filterState below.
   thrustPct: 'number',
   gimbalDeg: 'number',
   holdStartMs: 'number',
@@ -99,20 +99,30 @@ class RoomState extends Schema {
     this.players = new MapSchema();
     this.stations = new MapSchema();
     this.solvedPuzzles = new ArraySchema();
+    this.openDoors = new ArraySchema();
     this.burn = new BurnState();
     this.hintsUsed = 0;
+    this.objective = 'Wait for your group, then everyone press READY.';
+    this.act = 1;
+    // Client-rendered public puzzle state, JSON-encoded. Never contains an answer —
+    // see PuzzleEngine.publicState().
+    this.puzzleJson = '{}';
   }
 }
 defineTypes(RoomState, {
-  phase: 'string',              // lobby | briefing | active | escaped | failed | debrief
+  phase: 'string',
   clockMsRemaining: 'number',
   lockedPlayerCount: 'number',
   seed: 'string',
   players: { map: PlayerState },
   stations: { map: StationState },
   solvedPuzzles: ['string'],
+  openDoors: ['string'],
   burn: BurnState,
   hintsUsed: 'number',
+  objective: 'string',
+  act: 'number',
+  puzzleJson: 'string',
 });
 
 /* -------------------------------------------------------------------------- */
@@ -120,7 +130,17 @@ defineTypes(RoomState, {
 /* -------------------------------------------------------------------------- */
 
 const SESSION_MS = 60 * 60 * 1000;
+const BRIEFING_MS = 12_000;
 const TICK_MS = 250;
+const VIEW_MS = 1000;
+
+// Server-side pacing nudges (spec §8) — [minute, tier] against the frontier puzzle.
+const PACING = [
+  [14, 1],
+  [24, 2],
+  [32, 2],
+  [47, 3],
+];
 
 export class BurnWindowRoom extends Room {
   maxClients = 8;
@@ -131,20 +151,29 @@ export class BurnWindowRoom extends Room {
     this.state.clockMsRemaining = SESSION_MS;
 
     this.bookingId = options.bookingId ?? null;
-    this.maneuver = null;       // server-only; never assigned into state
-    this.pendingHolds = {};
+    this.maneuver = null;        // server-only; never assigned into state
+    this.engine = null;          // PuzzleEngine, created at start
+    this.content = null;
+    this.armSequence = [];
+    this.clearedStations = [];
     this.startedAt = null;
+    this.pacingFired = new Set();
+    this.resultReported = false;
 
+    this.onMessage('ready', (client) => this.onReady(client));
     this.onMessage('move', (client, m) => this.onMove(client, m));
+    this.onMessage('chat', (client, m) => this.onChat(client, m));
+    this.onMessage('interact', (client, m) => this.onInteract(client, m));
+    this.onMessage('read', (client, m) => this.onRead(client, m));
+    this.onMessage('hint.request', (client) => this.onHintRequest(client));
     this.onMessage('station.set', (client, m) => this.onStationSet(client, m));
     this.onMessage('station.arm', (client, m) => this.onStationArm(client, m));
     this.onMessage('station.ignite', (client, m) => this.onIgnite(client, m));
     this.onMessage('station.release', (client, m) => this.onRelease(client, m));
     this.onMessage('burn.execute', (client) => this.onExecuteBurn(client));
-    this.onMessage('hint.request', (client) => this.onHintRequest(client));
-    this.onMessage('session.start', (client) => this.onStart(client));
 
     this.setSimulationInterval(() => this.tick(), TICK_MS);
+    this.viewTimer = this.clock.setInterval(() => this.sendRoleScopedViews(), VIEW_MS);
   }
 
   /* ---- membership ---- */
@@ -158,12 +187,12 @@ export class BurnWindowRoom extends Room {
         avatarPreset: options.avatarPreset ?? 'preset-01',
       }),
     );
+    client.send('welcome', {
+      sessionId: client.sessionId,
+      phase: this.state.phase,
+    });
   }
 
-  /**
-   * A disconnect never pauses the team clock (spec §9). The seat is held so the player can
-   * reclaim it; any exclusive lease they held is released after a grace period.
-   */
   async onLeave(client, consented) {
     const p = this.state.players.get(client.sessionId);
     if (p) p.connected = false;
@@ -180,7 +209,6 @@ export class BurnWindowRoom extends Room {
       this.state.players.delete(client.sessionId);
       return;
     }
-
     try {
       await this.allowReconnection(client, 120);
       const back = this.state.players.get(client.sessionId);
@@ -192,67 +220,159 @@ export class BurnWindowRoom extends Room {
 
   /* ---- lifecycle ---- */
 
-  onStart(client) {
+  onReady(client) {
     if (this.state.phase !== 'lobby') return;
+    const p = this.state.players.get(client.sessionId);
+    if (!p) return;
+    p.ready = true;
 
+    const everyone = [...this.state.players.values()];
+    if (everyone.length >= 1 && everyone.every((x) => x.ready)) this.startSession();
+  }
+
+  startSession() {
     const count = this.state.players.size;
-    if (count < 3) {
-      client.send('error', { message: 'Burn Window needs at least three players.' });
-      return;
-    }
-
     const { liveStations, stages } = scaleForPlayers(count);
-    this.state.lockedPlayerCount = count;
 
-    for (const id of liveStations) {
-      this.state.stations.set(id, new StationState(id));
-    }
+    this.state.lockedPlayerCount = count;
+    for (const id of liveStations) this.state.stations.set(id, new StationState(id));
+
+    this.content = generateContent(this.state.seed, count);
+    this.engine = new PuzzleEngine(
+      this.content,
+      () => this.state.players.size,
+      () => this.sessionElapsed(),
+      (event, payload) => this.onEngineEvent(event, payload),
+    );
 
     this.maneuver = generateManeuver(this.state.seed, count, 0);
     this.state.burn.stagesTotal = stages;
-    this.state.burn.stageIndex = 0;
-    this.state.burn.attempt = 0;
     this.state.phase = 'briefing';
     this.startedAt = Date.now();
 
+    this.broadcast('cass', {
+      text:
+        'CASS: Good morning. This is your Cabin Assistance and Safety System. You are aboard ' +
+        'CSV Meridian, and I am required to inform you that the vehicle is outside its filed ' +
+        'trajectory, the flight crew is not responding, and the return manoeuvre window closes ' +
+        'in sixty minutes. Anterra Orbital thanks you for choosing the Blue Marble Loop.',
+    });
+
     this.clock.setTimeout(() => {
       this.state.phase = 'active';
-      this.state.burn.windowOpen = true;
-    }, 25_000); // authored briefing cinematic length
+      this.pushPuzzleState();
+    }, BRIEFING_MS);
+  }
+
+  sessionElapsed() {
+    return this.startedAt ? Math.max(0, Date.now() - this.startedAt - BRIEFING_MS) : 0;
   }
 
   tick() {
     if (this.state.phase !== 'active') return;
 
-    const elapsed = Date.now() - this.startedAt - 25_000;
-    this.state.clockMsRemaining = Math.max(0, SESSION_MS - elapsed - this.penaltyMs());
+    const elapsed = this.sessionElapsed();
+    this.state.clockMsRemaining = Math.max(
+      0,
+      SESSION_MS - elapsed - this.state.burn.attempt * SETBACK_MS,
+    );
+    if (this.state.clockMsRemaining <= 0) return this.finish('failed');
 
-    if (this.state.clockMsRemaining <= 0) this.finish('failed');
-  }
-
-  penaltyMs() {
-    return (this.state.burn.attempt ?? 0) * SETBACK_MS;
+    // Pacing nudges: unprompted CASS help when the group falls behind the spec's timeline.
+    const minute = elapsed / 60000;
+    for (const [atMin, tier] of PACING) {
+      const key = `${atMin}`;
+      if (minute >= atMin && !this.pacingFired.has(key)) {
+        this.pacingFired.add(key);
+        const frontier = this.engine?.frontier();
+        if (frontier) {
+          const h = this.engine.hint(frontier);
+          if (h && h.tier <= tier) {
+            this.state.hintsUsed++;
+            this.broadcast('cass', { text: `CASS: ${h.text}`, hint: h });
+          }
+        }
+      }
+    }
   }
 
   finish(result) {
+    if (this.state.phase === 'escaped' || this.state.phase === 'failed') return;
     this.state.phase = result;
     this.state.burn.windowOpen = false;
-    this.broadcast('session.result', {
+
+    const summary = {
       result,
       timeRemainingMs: this.state.clockMsRemaining,
       hintsUsed: this.state.hintsUsed,
       attempts: this.state.burn.attempt + 1,
-    });
+      solved: this.engine ? [...this.engine.solved] : [],
+      players: this.state.lockedPlayerCount,
+    };
+    this.broadcast('session.result', summary);
+    this.reportResult(summary);
     this.clock.setTimeout(() => { this.state.phase = 'debrief'; }, 8000);
   }
 
-  /* ---- movement ---- */
+  /** Best-effort: record the outcome in the application database via the web app. */
+  async reportResult(summary) {
+    if (this.resultReported) return;
+    this.resultReported = true;
+    const base = process.env.RESULT_WEBHOOK_URL;
+    const secret = process.env.RESULT_WEBHOOK_SECRET;
+    if (!base || !secret || !this.bookingId) return;
+    try {
+      await fetch(`${base}/api/session-result`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${secret}` },
+        body: JSON.stringify({ bookingId: this.bookingId, seed: this.state.seed, ...summary }),
+      });
+    } catch {
+      // The game outcome was already decided and broadcast; recording is best-effort.
+    }
+  }
+
+  /* ---- engine events ---- */
+
+  onEngineEvent(event, payload) {
+    if (event === 'puzzle.solved') {
+      if (!this.state.solvedPuzzles.includes(payload.puzzleId)) {
+        this.state.solvedPuzzles.push(payload.puzzleId);
+      }
+      this.state.objective = payload.objective;
+      this.state.act = payload.act;
+      this.recomputeDoors();
+      this.pushPuzzleState();
+      this.broadcast('puzzle.solved', payload);
+
+      if (payload.puzzleId === 'P12') this.state.burn.windowOpen = true;
+      return;
+    }
+    if (event === 'cass') {
+      this.broadcast('cass', payload);
+    }
+  }
+
+  recomputeDoors() {
+    const open = Object.entries(DOOR_RULES)
+      .filter(([, needs]) => needs.every((p) => this.engine.isSolved(p)))
+      .map(([door]) => door);
+    this.state.openDoors.clear();
+    for (const d of open) this.state.openDoors.push(d);
+  }
+
+  pushPuzzleState() {
+    if (!this.engine) return;
+    this.state.puzzleJson = JSON.stringify(this.engine.publicState());
+    this.state.objective = this.engine.objective();
+    this.state.act = this.engine.currentAct();
+  }
+
+  /* ---- movement / chat ---- */
 
   onMove(client, m) {
     const p = this.state.players.get(client.sessionId);
-    if (!p || this.state.phase !== 'active') return;
-
-    // Cheap sanity clamp. Full navmesh validation is PLANNED with the real level.
+    if (!p) return;
     p.x = clamp(Number(m.x) || 0, -200, 200);
     p.y = clamp(Number(m.y) || 0, -50, 50);
     p.z = clamp(Number(m.z) || 0, -200, 200);
@@ -263,14 +383,82 @@ export class BurnWindowRoom extends Room {
     p.voiceActive = Boolean(m.voiceActive);
   }
 
-  /* ---- stations ---- */
+  onChat(client, m) {
+    const p = this.state.players.get(client.sessionId);
+    if (!p) return;
+    const text = String(m?.text ?? '').slice(0, 300).trim();
+    if (!text) return;
+    this.broadcast('chat', { from: p.displayName, text, at: Date.now() });
+  }
+
+  /* ---- puzzle interaction ---- */
+
+  onInteract(client, m) {
+    if (this.state.phase !== 'active' || !this.engine) return;
+    const p = this.state.players.get(client.sessionId);
+    if (!p) return;
+
+    const result = this.engine.input(
+      String(m?.puzzleId ?? ''),
+      String(m?.action ?? ''),
+      m?.payload ?? {},
+      { seatId: client.sessionId, zone: p.zone },
+    );
+
+    // Station side-effects from the key/interlock puzzles.
+    if (result.poweredStation) {
+      const st = this.state.stations.get(result.poweredStation);
+      if (st) st.powered = true;
+      this.engine.finishP11IfComplete([...this.state.stations.keys()]);
+    }
+    if (result.clearedStation) {
+      const st = this.state.stations.get(result.clearedStation);
+      if (st) st.interlockCleared = true;
+      if (!this.clearedStations.includes(result.clearedStation)) {
+        this.clearedStations.push(result.clearedStation);
+      }
+      this.engine.finishP12IfComplete(this.clearedStations, [...this.state.stations.keys()]);
+    }
+
+    this.pushPuzzleState();
+    client.send('interact.result', {
+      puzzleId: m?.puzzleId, action: m?.action,
+      ok: result.ok, message: result.message ?? null,
+      holders: result.holders, need: result.need,
+    });
+  }
+
+  /** Zone-scoped reads — the asymmetric-information surface. */
+  onRead(client, m) {
+    if (!this.engine) return;
+    const p = this.state.players.get(client.sessionId);
+    if (!p) return;
+    const what = String(m?.what ?? '');
+    const data = this.engine.privateFor(what, p.zone, [...this.state.stations.keys()]);
+    client.send('read.result', { what, data });
+  }
+
+  onHintRequest(client) {
+    if (!this.engine) {
+      client.send('hint', { tier: 0, text: 'CASS: The session has not started.' });
+      return;
+    }
+    const h = this.engine.hint();
+    if (!h) {
+      client.send('hint', { tier: 0, text: 'CASS: There is nothing left to hint at. Fly.' });
+      return;
+    }
+    this.state.hintsUsed++;
+    // Hints are for the whole team — CASS speaks to the cabin, not into one ear.
+    this.broadcast('cass', { text: `CASS: ${h.text}`, hint: h });
+  }
+
+  /* ---- stations & burn (Act IV) ---- */
 
   stationForClient(client, stationId) {
     const p = this.state.players.get(client.sessionId);
     const st = this.state.stations.get(stationId);
     if (!p || !st) return null;
-
-    // A player must physically be in the station's bay to touch it.
     const zoneFor = { A: 'Z6', B: 'Z7', C: 'Z8' };
     if (p.zone !== zoneFor[stationId]) {
       client.send('error', { message: `You are not at ${STATION_NAMES[stationId]}.` });
@@ -280,14 +468,17 @@ export class BurnWindowRoom extends Room {
   }
 
   onStationSet(client, m) {
-    if (this.state.phase !== 'active') return;
+    if (this.state.phase !== 'active' || !this.state.burn.windowOpen) return;
     const st = this.stationForClient(client, m.station);
     if (!st) return;
+    if (!st.powered || !st.interlockCleared) {
+      client.send('error', { message: 'The station is not powered and cleared yet.' });
+      return;
+    }
     if (st.armed) {
       client.send('error', { message: 'Station is armed. Safe it before changing settings.' });
       return;
     }
-
     st.thrustPct = clamp(Number(m.thrustPct) || 0, 0, 100);
     st.gimbalDeg = clamp(Number(m.gimbalDeg) || 0, -25, 25);
     st.dialsTouched = true;
@@ -295,20 +486,18 @@ export class BurnWindowRoom extends Room {
   }
 
   onStationArm(client, m) {
-    if (this.state.phase !== 'active') return;
+    if (this.state.phase !== 'active' || !this.state.burn.windowOpen) return;
     const st = this.stationForClient(client, m.station);
     if (!st) return;
     if (!st.powered || !st.interlockCleared) {
       client.send('error', { message: 'Interlock has not been cleared at this station.' });
       return;
     }
-
     st.armed = Boolean(m.armed);
     if (st.armed) {
-      this.armSequence = this.armSequence ?? [];
       if (!this.armSequence.includes(st.id)) this.armSequence.push(st.id);
     } else {
-      this.armSequence = (this.armSequence ?? []).filter((id) => id !== st.id);
+      this.armSequence = this.armSequence.filter((id) => id !== st.id);
     }
   }
 
@@ -327,23 +516,18 @@ export class BurnWindowRoom extends Room {
     st.holdEndMs = Date.now();
   }
 
-  /**
-   * The navigator commits the attempt. Validation happens here and nowhere else — a client
-   * cannot declare its own success.
-   */
   onExecuteBurn(client) {
-    if (this.state.phase !== 'active' || !this.maneuver) return;
-
+    if (this.state.phase !== 'active' || !this.maneuver || !this.state.burn.windowOpen) return;
     const p = this.state.players.get(client.sessionId);
     if (!p || p.zone !== 'Z5') {
-      client.send('error', { message: 'Only the flight deck can commit the maneuver.' });
+      client.send('error', { message: 'Only the flight deck can commit the manoeuvre.' });
       return;
     }
 
     const stage = this.maneuver.stages[this.state.burn.stageIndex];
-    const live = this.maneuver.liveStations;
+    const live = [...this.state.stations.keys()];
 
-    const attempt = { armedOrder: this.armSequence ?? [], stations: {} };
+    const attempt = { armedOrder: [...this.armSequence], stations: {} };
     for (const id of live) {
       const st = this.state.stations.get(id);
       if (!st || !st.holdStartMs || !st.holdEndMs) continue;
@@ -356,7 +540,6 @@ export class BurnWindowRoom extends Room {
     }
 
     const result = validateBurn(stage, attempt, live);
-
     this.broadcast('burn.result', {
       stageIndex: stage.index,
       ok: result.ok,
@@ -369,10 +552,10 @@ export class BurnWindowRoom extends Room {
       this.state.burn.lastFailureSummary = '';
       this.state.burn.stageIndex += 1;
       this.resetStations();
-
-      if (this.state.burn.stageIndex >= this.maneuver.stages.length) {
-        this.finish('escaped');
-      }
+      this.broadcast('cass', {
+        text: `CASS: Stage ${stage.index + 1} confirmed. Trajectory improving.`,
+      });
+      if (this.state.burn.stageIndex >= this.maneuver.stages.length) this.finish('escaped');
     } else {
       // A failure regenerates the plan so retrying is never brute force (spec D-04).
       this.state.burn.attempt += 1;
@@ -381,6 +564,9 @@ export class BurnWindowRoom extends Room {
       this.maneuver = generateManeuver(this.state.seed, this.state.lockedPlayerCount, this.state.burn.attempt);
       this.state.burn.stageIndex = 0;
       this.resetStations();
+      this.broadcast('cass', {
+        text: 'CASS: The attempt did not validate. The computer is issuing a fresh solution — the old numbers are void.',
+      });
     }
   }
 
@@ -393,22 +579,17 @@ export class BurnWindowRoom extends Room {
     });
   }
 
-  onHintRequest(client) {
-    this.state.hintsUsed += 1;
-    // Deterministic hint selection lives in the hint engine; see docs/OPERATOR_AND_HINTS.md.
-    client.send('hint', { tier: 1, text: 'CASS is reviewing the cabin status. Stand by.' });
-  }
-
   /**
    * ASYMMETRIC INFORMATION ENFORCEMENT.
    *
-   * The maneuver plan is server-only and is pushed only to clients whose player is on the
-   * flight deck. Station panel values are pushed only to the client at that station. This is
-   * the mechanic; if it leaks, the game is over.
+   * The manoeuvre plan is pushed only to clients whose player is on the flight deck. Station
+   * panel values go only to the client physically at that station. If this leaks, the game's
+   * central mechanic is gone.
    */
   sendRoleScopedViews() {
-    if (!this.maneuver) return;
+    if (!this.maneuver || this.state.phase !== 'active' || !this.state.burn.windowOpen) return;
     const stage = this.maneuver.stages[this.state.burn.stageIndex];
+    if (!stage) return;
 
     for (const client of this.clients) {
       const p = this.state.players.get(client.sessionId);
@@ -425,6 +606,7 @@ export class BurnWindowRoom extends Room {
             settings: stage.settings,
             durationMs: stage.durationMs,
           },
+          stagesTotal: this.maneuver.stages.length,
           readiness,
         });
       } else {
@@ -441,7 +623,7 @@ export class BurnWindowRoom extends Room {
           armed: st.armed,
           thrustPct: st.thrustPct,
           gimbalDeg: st.gimbalDeg,
-          // Deliberately absent: the commanded values. Someone has to say them out loud.
+          // Deliberately absent: the commanded values. Someone says them out loud.
         });
       }
     }

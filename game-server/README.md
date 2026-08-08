@@ -20,6 +20,23 @@ Point the web app at it:
 NEXT_PUBLIC_GAME_SERVER_URL=ws://localhost:2567
 ```
 
+## Environment
+
+| Variable | Purpose |
+|---|---|
+| `PORT` | Listen port (Railway injects this; defaults to 2567 locally) |
+| `RESULT_WEBHOOK_URL` | Base URL of the web app (e.g. `https://realtimeescape.com`). When set, finished sessions POST their outcome to `/api/session-result`. |
+| `RESULT_WEBHOOK_SECRET` | Must equal the web app's `CRON_SECRET`. Authorises the result POST. |
+
+Both webhook variables are optional — without them the game still plays and decides outcomes;
+the result simply is not recorded in the application database.
+
+## Tests
+
+```bash
+node playthrough-test.mjs           # full solo playthrough: all 14 puzzles → ESCAPED
+```
+
 ## Deploy
 
 ```bash

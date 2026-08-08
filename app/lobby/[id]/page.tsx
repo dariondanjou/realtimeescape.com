@@ -5,6 +5,7 @@ import { loadBooking } from '@/lib/bookings';
 import ReadinessChecks from './ReadinessChecks';
 import RecordingConsent from './RecordingConsent';
 import { gameClientAvailable } from '@/lib/demo';
+import EnterShip from './EnterShip';
 
 export const metadata: Metadata = { title: 'Lobby', robots: { index: false } };
 export const dynamic = 'force-dynamic';
@@ -54,13 +55,7 @@ export default async function LobbyPage({ params }: { params: Promise<{ id: stri
                   clock starts. You do not need to press anything at a particular moment — the last
                   person to mark ready starts it for the group.
                 </p>
-                <Link
-                  href={`/play/${booking.id}`}
-                  className={`btn ${allPaid ? 'btn-primary' : 'btn-ghost'}`}
-                  aria-disabled={!allPaid}
-                >
-                  {allPaid ? 'Enter the ship' : 'Waiting on your group'}
-                </Link>
+                <EnterShip bookingId={booking.id} enabled={allPaid} />
               </div>
             ) : (
               /* Honest dead-end state. The 3D client and game server are not deployed, and a

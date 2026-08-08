@@ -46,9 +46,18 @@ export const STATION_NAMES = Object.freeze({
   C: 'Aft Gimbal Trim Bay',
 });
 
-/** Live stations and burn stages by locked player count (spec §3.1). */
+/**
+ * Live stations and burn stages by locked player count (spec §3.1).
+ *
+ * Counts 1 and 2 exist for demo mode only: a solo player runs a single-station burn and a pair
+ * split navigator-and-operator across two stations. The real product minimum remains 3 — the
+ * booking flow enforces that; this function just refuses to deal an impossible hand when a demo
+ * session starts smaller.
+ */
 export function scaleForPlayers(playerCount) {
-  const n = Math.max(3, Math.min(8, Math.floor(playerCount)));
+  const n = Math.max(1, Math.min(8, Math.floor(playerCount)));
+  if (n === 1) return { playerCount: n, liveStations: ['A'], stages: 2 };
+  if (n === 2) return { playerCount: n, liveStations: ['A', 'B'], stages: 2 };
   const liveStations = n >= 5 ? ['A', 'B', 'C'] : ['A', 'B'];
   const stages = n >= 6 ? 3 : 2;
   return { playerCount: n, liveStations, stages };
@@ -116,7 +125,7 @@ export function validatePlan(plan) {
   const problems = [];
 
   if (!plan.stages.length) problems.push('no stages');
-  if (plan.liveStations.length < 2) problems.push('fewer than two live stations');
+  if (plan.liveStations.length < 1) problems.push('no live stations');
 
   for (const stage of plan.stages) {
     const armed = [...stage.armingOrder].sort().join('');
