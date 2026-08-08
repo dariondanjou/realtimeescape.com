@@ -274,7 +274,7 @@ export default function GameClient({
 
   return (
     /* z-index above the site header (50) and the feedback widget (80): the ship is the page. */
-    <div style={{ position: 'fixed', inset: 0, background: '#0b1114', zIndex: 90 }}>
+    <div className="theme-dark" style={{ position: 'fixed', inset: 0, background: '#0b1114', zIndex: 90 }}>
       <canvas
         ref={canvasRef}
         style={{ width: '100%', height: '100%', display: 'block', outline: 'none' }}
@@ -981,7 +981,7 @@ function Slider({ label, unit, min, max, step, value, disabled, onChange }: {
 }
 
 function Shell({ children }: { children: React.ReactNode }) {
-  return <div style={{ position: 'fixed', inset: 0, display: 'grid', placeItems: 'center', background: '#0b1114' }}>{children}</div>;
+  return <div className="theme-dark" style={{ position: 'fixed', inset: 0, display: 'grid', placeItems: 'center', background: '#0b1114' }}>{children}</div>;
 }
 function Center({ children }: { children: React.ReactNode }) {
   return (
