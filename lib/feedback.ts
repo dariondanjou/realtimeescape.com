@@ -196,8 +196,11 @@ export async function applyCollation(feedbackId: string, collation: Collation, m
     topicId = created?.id ?? null;
   }
 
-  // Setting topic_id fires the database trigger that recomputes the topic's weight.
-  await db
+  // Setting topic_id fires the database trigger that recomputes the topic's weight. Throw on
+  // failure rather than swallowing it — an earlier version ignored this error, so a broken
+  // trigger aborted every write while the sweep still reported success and the queue quietly
+  // filled with weightless topics.
+  const { error } = await db
     .from('rte_feedback')
     .update({
       topic_id: topicId,
@@ -207,6 +210,8 @@ export async function applyCollation(feedbackId: string, collation: Collation, m
       classifier_model: model,
     })
     .eq('id', feedbackId);
+
+  if (error) throw new Error(`Could not attach feedback to topic: ${error.message}`);
 
   return topicId;
 }
