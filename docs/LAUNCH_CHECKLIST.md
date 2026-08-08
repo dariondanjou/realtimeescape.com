@@ -28,15 +28,33 @@ Last updated 7 August 2026.
 
 ---
 
-## BLOCKED — needs one credential each
+## REMAINING
 
-### 1. Apply the database schema  ← **do this first, nothing else works without it**
+### 1. ~~Apply the database schema~~ — **DONE, 8 August 2026**
 
-Booking, accounts, invitations, credits, recording and feedback all write to tables that do not
-exist yet. Until this runs, the site is a brochure.
+All four migrations are applied: **26 `rte_` tables, 3 views, 13 row-level-security policies**, and
+the Burn Window catalog row seeded. Verified end to end — a demo booking was created and confirmed,
+its session shell provisioned, and a feedback row captured.
 
-**Fastest path (about a minute):** open the Supabase SQL editor for project
-`xnejbxdvqmzlaljkgwaf` and run these three files in order, pasting each in full:
+Re-runnable at any time (both are idempotent):
+
+```bash
+node scripts/apply-migrations.mjs <token-file>   # applies supabase/migrations/*.sql in order
+node scripts/verify.mjs <token-file>             # read-only smoke check
+```
+
+Both use the **Supabase Management API** (`POST /v1/projects/{ref}/database/query`), which executes
+DDL. It needs a **personal access token** (`sbp_…`) from
+https://supabase.com/dashboard/account/tokens — the anon and service-role keys are rejected here
+with `401 JWT failed verification`, because they authenticate to PostgREST and can move rows but
+cannot create tables. This is the same mechanism the aimakersgeneration project uses
+(`cohorts/seed-push.mjs`).
+
+<details>
+<summary>Manual fallback, if you ever need to start from scratch</summary>
+
+Open the Supabase SQL editor for project `xnejbxdvqmzlaljkgwaf` and run these files in order,
+pasting each in full:
 
 ```
 supabase/migrations/0001_init.sql                       accounts, bookings, seats, invitations, sessions
@@ -47,19 +65,27 @@ supabase/migrations/0004_demo_and_credit_spend.sql      demo bookings, credit re
 
 All four are guarded and safe to re-run.
 
-**Or from the CLI**, if you supply the database password:
+> Do **not** reach for `supabase link` / `supabase db push` — `link` fails against the API with an
+> upstream timestamp-parsing bug (`LegacyLinkApiKeysNetworkError`) unrelated to this project, and
+> `db push` would need the database password, which nothing here has. The Management API path
+> above avoids both problems.
 
-```bash
-npx supabase link --project-ref xnejbxdvqmzlaljkgwaf --password '<db password>'
-npx supabase db push --password '<db password>'
+</details>
+
+**Also done:** the private **`feedback-audio`** storage bucket exists (created via the Storage
+API), and `ANTHROPIC_API_KEY`, `CONSENT_IP_SALT` and `DEMO_MODE_KEY` are set in Vercel production.
+
+### 1b. Top up the Anthropic account  ← **the live gap**
+
+The API key is correct and installed — it authenticates fine, and is rejected on **billing**:
+
+```
+400 "Your credit balance is too low to access the Anthropic API"
 ```
 
-> The Supabase CLI on this machine is logged in, but `supabase link` currently fails against the
-> API with an upstream timestamp-parsing bug (`LegacyLinkApiKeysNetworkError`) unrelated to this
-> project. The SQL-editor path avoids it entirely.
-
-**Already done:** the private **`feedback-audio`** storage bucket exists (created via the Storage
-API), and `ANTHROPIC_API_KEY`, `CONSENT_IP_SALT` and `DEMO_MODE_KEY` are set in Vercel production.
+Until it is topped up, AI triage and feedback collation stay in their fallback modes: issue reports
+are stored and routed to a human, and feedback is stored with `topic_id` null awaiting a collation
+sweep. Nothing breaks; the automation simply does not run, and `/roadmap` stays empty.
 
 **Or from the CLI**, if you supply the database password:
 
