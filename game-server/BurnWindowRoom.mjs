@@ -8,7 +8,26 @@ import {
 /* State schema                                                               */
 /* -------------------------------------------------------------------------- */
 
-class PlayerState extends Schema {}
+/**
+ * @colyseus/schema 3.x does not auto-instantiate MapSchema/ArraySchema fields, and it will not
+ * encode `undefined` primitives. Every state class therefore initialises its own fields in a
+ * constructor — without this, onJoin fails with "Cannot read properties of undefined (reading
+ * 'set')" the moment a client tries to join.
+ */
+class PlayerState extends Schema {
+  constructor(init = {}) {
+    super();
+    this.seatId = init.seatId ?? '';
+    this.displayName = init.displayName ?? 'Passenger';
+    this.avatarPreset = init.avatarPreset ?? 'preset-01';
+    this.zone = init.zone ?? 'Z1';
+    this.x = 0; this.y = 0; this.z = 0; this.ry = 0;
+    this.locomotion = 'idle';
+    this.heldObject = '';
+    this.voiceActive = false;
+    this.connected = true;
+  }
+}
 defineTypes(PlayerState, {
   seatId: 'string',
   displayName: 'string',
@@ -21,7 +40,21 @@ defineTypes(PlayerState, {
   connected: 'boolean',
 });
 
-class StationState extends Schema {}
+class StationState extends Schema {
+  constructor(id = '') {
+    super();
+    this.id = id;
+    this.powered = false;
+    this.interlockCleared = false;
+    this.armed = false;
+    this.dialsTouched = false;
+    this.thrustPct = 0;
+    this.gimbalDeg = 0;
+    this.holdStartMs = 0;
+    this.holdEndMs = 0;
+    this.operatorSeatId = '';
+  }
+}
 defineTypes(StationState, {
   id: 'string',
   powered: 'boolean',
@@ -36,7 +69,17 @@ defineTypes(StationState, {
   operatorSeatId: 'string',
 });
 
-class BurnState extends Schema {}
+class BurnState extends Schema {
+  constructor() {
+    super();
+    this.attempt = 0;
+    this.stageIndex = 0;
+    this.stagesTotal = 0;
+    this.windowOpen = false;
+    this.lastResult = '';
+    this.lastFailureSummary = '';
+  }
+}
 defineTypes(BurnState, {
   attempt: 'number',
   stageIndex: 'number',
@@ -46,7 +89,20 @@ defineTypes(BurnState, {
   lastFailureSummary: 'string',
 });
 
-class RoomState extends Schema {}
+class RoomState extends Schema {
+  constructor() {
+    super();
+    this.phase = 'lobby';
+    this.clockMsRemaining = 0;
+    this.lockedPlayerCount = 0;
+    this.seed = '';
+    this.players = new MapSchema();
+    this.stations = new MapSchema();
+    this.solvedPuzzles = new ArraySchema();
+    this.burn = new BurnState();
+    this.hintsUsed = 0;
+  }
+}
 defineTypes(RoomState, {
   phase: 'string',              // lobby | briefing | active | escaped | failed | debrief
   clockMsRemaining: 'number',
@@ -71,15 +127,8 @@ export class BurnWindowRoom extends Room {
 
   onCreate(options) {
     this.setState(new RoomState());
-    this.state.phase = 'lobby';
     this.state.seed = options.seed ?? Math.random().toString(36).slice(2);
     this.state.clockMsRemaining = SESSION_MS;
-    this.state.hintsUsed = 0;
-    this.state.burn = new BurnState();
-    this.state.burn.attempt = 0;
-    this.state.burn.stageIndex = 0;
-    this.state.burn.windowOpen = false;
-    this.state.burn.lastResult = '';
 
     this.bookingId = options.bookingId ?? null;
     this.maneuver = null;       // server-only; never assigned into state
@@ -100,18 +149,15 @@ export class BurnWindowRoom extends Room {
 
   /* ---- membership ---- */
 
-  onJoin(client, options) {
-    const p = new PlayerState();
-    p.seatId = options.seatId ?? client.sessionId;
-    p.displayName = String(options.displayName ?? 'Passenger').slice(0, 32);
-    p.avatarPreset = options.avatarPreset ?? 'preset-01';
-    p.zone = 'Z1';
-    p.x = 0; p.y = 0; p.z = 0; p.ry = 0;
-    p.locomotion = 'idle';
-    p.heldObject = '';
-    p.voiceActive = false;
-    p.connected = true;
-    this.state.players.set(client.sessionId, p);
+  onJoin(client, options = {}) {
+    this.state.players.set(
+      client.sessionId,
+      new PlayerState({
+        seatId: options.seatId ?? client.sessionId,
+        displayName: String(options.displayName ?? 'Passenger').slice(0, 32),
+        avatarPreset: options.avatarPreset ?? 'preset-01',
+      }),
+    );
   }
 
   /**
@@ -159,18 +205,7 @@ export class BurnWindowRoom extends Room {
     this.state.lockedPlayerCount = count;
 
     for (const id of liveStations) {
-      const st = new StationState();
-      st.id = id;
-      st.powered = false;
-      st.interlockCleared = false;
-      st.armed = false;
-      st.dialsTouched = false;
-      st.thrustPct = 0;
-      st.gimbalDeg = 0;
-      st.holdStartMs = 0;
-      st.holdEndMs = 0;
-      st.operatorSeatId = '';
-      this.state.stations.set(id, st);
+      this.state.stations.set(id, new StationState(id));
     }
 
     this.maneuver = generateManeuver(this.state.seed, count, 0);
