@@ -48,7 +48,7 @@ export default function HowItWorks() {
         <h2 style={{ fontSize: 24, margin: '48px 0 16px' }}>What you need</h2>
         <div className="panel">
           <dl>
-            <div className="kv"><dt>Computer</dt><dd>Desktop or laptop — not a phone</dd></div>
+            <div className="kv"><dt>Device</dt><dd>Computer or phone — touch controls on mobile</dd></div>
             <div className="kv"><dt>Browser</dt><dd>Chrome or Edge, up to date. Safari mostly works.</dd></div>
             <div className="kv"><dt>Graphics</dt><dd>Anything from the last ~6 years, including built-in Intel graphics</dd></div>
             <div className="kv"><dt>Microphone</dt><dd>Required. Headphones strongly recommended.</dd></div>

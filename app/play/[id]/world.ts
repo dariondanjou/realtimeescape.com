@@ -54,6 +54,8 @@ export type World = {
   upsertRemote(id: string, name: string, x: number, y: number, z: number, ry: number): void;
   removeRemote(id: string): void;
   requestPointerLock(): void;
+  /** virtual joystick input, each axis −1..1: x strafes, z walks forward */
+  setMove(x: number, z: number): void;
 };
 
 // ---------------------------------------------------------------------------
@@ -1089,6 +1091,9 @@ export function createWorld(canvas: HTMLCanvasElement, events: WorldEvents): Wor
   camera.keysLeft = [65, 37]; // A, ArrowLeft
   camera.keysRight = [68, 39]; // D, ArrowRight
   camera.attachControl(true);
+  // Touch is handled by the explicit handlers below (drag looks, tap uses, the React
+  // joystick moves); Babylon's own touch input would fight them.
+  camera.inputs.removeByType('FreeCameraTouchInput');
 
   // -- pointer lock ---------------------------------------------------------
 
@@ -1114,6 +1119,55 @@ export function createWorld(canvas: HTMLCanvasElement, events: WorldEvents): Wor
     }
   };
   canvas.addEventListener('pointerdown', onPointerDown);
+
+  // -- touch input: one finger drags to look, a stationary tap uses -----------
+
+  const moveInput = { x: 0, z: 0 };
+  let lookPointer = -1;
+  let lookLastX = 0;
+  let lookLastY = 0;
+  let lookStartX = 0;
+  let lookStartY = 0;
+  let lookStartT = 0;
+  let lookMoved = false;
+
+  const onTouchDown = (e: PointerEvent): void => {
+    if (e.pointerType !== 'touch' || lookPointer !== -1) return;
+    lookPointer = e.pointerId;
+    lookLastX = lookStartX = e.clientX;
+    lookLastY = lookStartY = e.clientY;
+    lookStartT = performance.now();
+    lookMoved = false;
+  };
+  const onTouchMove = (e: PointerEvent): void => {
+    if (e.pointerId !== lookPointer) return;
+    const dx = e.clientX - lookLastX;
+    const dy = e.clientY - lookLastY;
+    lookLastX = e.clientX;
+    lookLastY = e.clientY;
+    if (Math.abs(e.clientX - lookStartX) + Math.abs(e.clientY - lookStartY) > 12) lookMoved = true;
+    camera.rotation.y += dx * 0.005;
+    camera.rotation.x = Math.max(-1.25, Math.min(1.25, camera.rotation.x + dy * 0.005));
+  };
+  const onTouchUp = (e: PointerEvent): void => {
+    if (e.pointerId !== lookPointer) return;
+    lookPointer = -1;
+    if (lookMoved || performance.now() - lookStartT > 350) return;
+    // A tap: use what was tapped if it is in reach; otherwise whatever the
+    // crosshair is on. Touch aim is imprecise, so reach is a little generous.
+    const rect = canvas.getBoundingClientRect();
+    const pick = scene.pick(e.clientX - rect.left, e.clientY - rect.top, (m: AbstractMesh) => interactableByMesh.has(m));
+    if (pick !== null && pick.hit && pick.pickedMesh !== null && pick.distance <= INTERACT_RANGE * 1.5) {
+      const id = interactableByMesh.get(pick.pickedMesh);
+      if (id !== undefined) events.onInteract(id);
+    } else if (hoveredId !== null) {
+      events.onInteract(hoveredId);
+    }
+  };
+  canvas.addEventListener('pointerdown', onTouchDown);
+  canvas.addEventListener('pointermove', onTouchMove);
+  canvas.addEventListener('pointerup', onTouchUp);
+  canvas.addEventListener('pointercancel', onTouchUp);
 
   // -- remote avatars -------------------------------------------------------
 
@@ -1169,6 +1223,19 @@ export function createWorld(canvas: HTMLCanvasElement, events: WorldEvents): Wor
 
     // mag-boots fiction: stay at eye height
     camera.position.y = EYE_HEIGHT;
+
+    // virtual joystick — feed FreeCamera's own displacement pipeline so touch
+    // movement collides and glides exactly like the keyboard's
+    if (moveInput.x !== 0 || moveInput.z !== 0) {
+      const k = camera.speed * Math.min(dt * 60, 2) * 0.6;
+      const s = Math.sin(camera.rotation.y);
+      const c = Math.cos(camera.rotation.y);
+      camera.cameraDirection.addInPlace(new Vector3(
+        (s * moveInput.z + c * moveInput.x) * k,
+        0,
+        (c * moveInput.z - s * moveInput.x) * k,
+      ));
+    }
 
     // door animation
     for (const door of doors.values()) {
@@ -1248,6 +1315,10 @@ export function createWorld(canvas: HTMLCanvasElement, events: WorldEvents): Wor
       window.removeEventListener('resize', onResize);
       window.removeEventListener('keydown', onKeyDown);
       canvas.removeEventListener('pointerdown', onPointerDown);
+      canvas.removeEventListener('pointerdown', onTouchDown);
+      canvas.removeEventListener('pointermove', onTouchMove);
+      canvas.removeEventListener('pointerup', onTouchUp);
+      canvas.removeEventListener('pointercancel', onTouchUp);
       document.removeEventListener('pointerlockchange', onPointerLockChange);
       for (const av of avatars.values()) {
         av.labelTexture.dispose();
@@ -1298,6 +1369,11 @@ export function createWorld(canvas: HTMLCanvasElement, events: WorldEvents): Wor
     requestPointerLock(): void {
       // Older lib.dom typings return void; newer return Promise<void>. Ignore either.
       void canvas.requestPointerLock();
+    },
+
+    setMove(x: number, z: number): void {
+      moveInput.x = Math.max(-1, Math.min(1, x));
+      moveInput.z = Math.max(-1, Math.min(1, z));
     },
   };
 }

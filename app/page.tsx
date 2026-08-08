@@ -35,7 +35,7 @@ export default async function Home() {
             <Link href="/demo" className="link-more">Try the ending free</Link>
           </div>
         </div>
-        <p className="hero-foot">3–8 players · 60 minutes · desktop or laptop browser</p>
+        <p className="hero-foot">3–8 players · 60 minutes · plays in your browser, computer or phone</p>
       </section>
 
       {/* ---- Why it's different ---- */}

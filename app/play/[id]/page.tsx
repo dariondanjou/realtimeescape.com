@@ -1,11 +1,14 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { loadBooking } from '@/lib/bookings';
 import { gameClientAvailable } from '@/lib/demo';
 import Boarding from './Boarding';
 
 export const metadata: Metadata = { title: 'Burn Window', robots: { index: false } };
+
+// Pinch-zoom fights the touch controls mid-game; the game page pins the viewport.
+export const viewport: Viewport = { width: 'device-width', initialScale: 1, maximumScale: 1, userScalable: false };
 
 export default async function PlayPage({
   params, searchParams,

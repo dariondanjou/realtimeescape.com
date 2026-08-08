@@ -78,7 +78,7 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
         <div className="panel" style={{ marginTop: 22 }}>
           <h3 style={{ fontSize: 17, marginBottom: 10 }}>What you need</h3>
           <ul className="small" style={{ paddingLeft: 18, display: 'grid', gap: 7 }}>
-            <li>A desktop or laptop computer — not a phone.</li>
+            <li>A computer or a phone with a modern browser. A computer plays nicest; phones use touch controls.</li>
             <li>Chrome or Edge, up to date.</li>
             <li>A microphone. The last fifteen minutes of this game are unwinnable without one.</li>
             <li>Headphones, ideally, so you do not echo into everyone else&rsquo;s audio.</li>

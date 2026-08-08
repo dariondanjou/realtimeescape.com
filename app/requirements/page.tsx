@@ -23,7 +23,7 @@ export default function RequirementsPage() {
         <h2 style={{ fontSize: 22, margin: '46px 0 14px' }}>The full list</h2>
         <div className="panel">
           <dl>
-            <div className="kv"><dt>Device</dt><dd>Desktop or laptop. Phones and tablets are not supported for gameplay.</dd></div>
+            <div className="kv"><dt>Device</dt><dd>Desktop, laptop, phone or tablet. Touch controls on mobile; a computer with a mouse plays nicest.</dd></div>
             <div className="kv"><dt>Browser</dt><dd>Chrome 113+, Edge 113+. Safari 17+ works with reduced effects.</dd></div>
             <div className="kv"><dt>Graphics</dt><dd>WebGL2 minimum. WebGPU unlocks the high quality tier.</dd></div>
             <div className="kv"><dt>Memory</dt><dd>8 GB system RAM recommended</dd></div>

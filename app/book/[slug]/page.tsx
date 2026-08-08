@@ -58,7 +58,7 @@ export default async function BookPage({ params }: { params: Promise<{ slug: str
 
               <h3 style={{ fontSize: 17, marginBottom: 10 }}>Before you book</h3>
               <ul className="small" style={{ paddingLeft: 18, display: 'grid', gap: 8 }}>
-                <li>Everyone needs a desktop or laptop, not a phone.</li>
+                <li>Any modern browser works — computer or phone. A computer with a mouse is the nicest way to play.</li>
                 <li>Chrome or Edge, updated. Headphones strongly recommended.</li>
                 <li>Everyone needs a working microphone — the ending depends on talking.</li>
               </ul>

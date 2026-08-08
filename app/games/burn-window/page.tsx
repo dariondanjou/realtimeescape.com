@@ -97,7 +97,7 @@ export default function BurnWindowPage() {
                   <div className="kv"><dt>Best with</dt><dd>{game.recommended}</dd></div>
                   <div className="kv"><dt>Difficulty</dt><dd>{game.difficulty}</dd></div>
                   <div className="kv"><dt>Price</dt><dd>{formatPrice(game.pricePerSeatCents)} / player</dd></div>
-                  <div className="kv"><dt>Device</dt><dd>Desktop or laptop</dd></div>
+                  <div className="kv"><dt>Device</dt><dd>Computer or phone</dd></div>
                   <div className="kv"><dt>Voice</dt><dd>Built in</dd></div>
                   <div className="kv"><dt>Download</dt><dd>None</dd></div>
                 </dl>

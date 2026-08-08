@@ -23,7 +23,11 @@ export default function DeviceCheck() {
     });
 
     const mobile = /Android|iPhone|iPad|iPod/i.test(ua);
-    out.push({ label: 'Device type', value: mobile ? 'Phone or tablet' : 'Desktop or laptop', ok: !mobile });
+    out.push({
+      label: 'Device type',
+      value: mobile ? 'Phone or tablet — touch controls' : 'Desktop or laptop',
+      ok: mobile ? null : true,
+    });
 
     let gpu = 'None';
     let gpuOk = false;

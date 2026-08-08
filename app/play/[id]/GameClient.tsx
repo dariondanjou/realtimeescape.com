@@ -101,8 +101,21 @@ export default function GameClient({
   const [result, setResult] = useState<SessionResult | null>(null);
   const [myZone, setMyZone] = useState<ZoneId>('Z1');
 
+  const [isTouch, setIsTouch] = useState(false);
+  useEffect(() => {
+    setIsTouch(window.matchMedia('(pointer: coarse)').matches);
+  }, []);
+
   const send = useCallback((type: string, payload?: unknown) => {
     roomRef.current?.send(type, payload);
+  }, []);
+
+  const openPanel = useCallback((id: string) => {
+    if (!panelOpenRef.current) {
+      setPanel(id);
+      setPanelMsg(null);
+      document.exitPointerLock?.();
+    }
   }, []);
 
   const interact = useCallback((puzzleId: string, action: string, payload?: unknown) => {
@@ -203,13 +216,7 @@ export default function GameClient({
         // World
         if (canvasRef.current) {
           const world = createWorld(canvasRef.current, {
-            onInteract: (id) => {
-              if (!panelOpenRef.current) {
-                setPanel(id);
-                setPanelMsg(null);
-                document.exitPointerLock?.();
-              }
-            },
+            onInteract: openPanel,
             onHover: (id) => setHover(id),
             onZoneChange: (z) => { zoneRef.current = z; setMyZone(z); },
             onLockChange: (l) => setLocked(l),
@@ -277,8 +284,8 @@ export default function GameClient({
     <div className="theme-dark" style={{ position: 'fixed', inset: 0, background: '#0b1114', zIndex: 90 }}>
       <canvas
         ref={canvasRef}
-        style={{ width: '100%', height: '100%', display: 'block', outline: 'none' }}
-        onClick={() => { if (!panel && phase === 'active') worldRef.current?.requestPointerLock(); }}
+        style={{ width: '100%', height: '100%', display: 'block', outline: 'none', touchAction: 'none' }}
+        onClick={() => { if (!isTouch && !panel && phase === 'active') worldRef.current?.requestPointerLock(); }}
       />
 
       {/* ---- lobby / briefing overlays ---- */}
@@ -339,12 +346,19 @@ export default function GameClient({
               <div style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%)', color: '#dff2fb', opacity: 0.8, fontSize: 18 }}>·</div>
               {hover && (
                 <div style={{ position: 'absolute', left: '50%', top: '56%', transform: 'translateX(-50%)' }} className="mono">
-                  <span className="badge badge-live" style={{ fontSize: 12 }}>E · {LABELS[hover] ?? hover}</span>
+                  <span className="badge badge-live" style={{ fontSize: 12 }}>
+                    {isTouch ? 'Tap' : 'E'} · {LABELS[hover] ?? hover}
+                  </span>
                 </div>
               )}
-              {!locked && (
+              {!locked && !isTouch && (
                 <div style={{ position: 'absolute', left: '50%', bottom: '18%', transform: 'translateX(-50%)' }} className="tiny">
                   Click to look around · WASD to move · E to use · Enter to chat · H for a hint
+                </div>
+              )}
+              {isTouch && (
+                <div style={{ position: 'absolute', left: '50%', bottom: 160, transform: 'translateX(-50%)', whiteSpace: 'nowrap' }} className="tiny">
+                  Stick to walk · drag to look · tap glowing objects to use them
                 </div>
               )}
             </>
@@ -360,8 +374,8 @@ export default function GameClient({
             ))}
           </div>
 
-          {/* chat */}
-          <div style={{ position: 'absolute', left: 14, bottom: 14, width: 300 }}>
+          {/* chat — on touch it sits above the joystick instead of under it */}
+          <div style={{ position: 'absolute', left: 14, bottom: isTouch ? 214 : 14, width: 'min(300px, 62vw)' }}>
             {chat.slice(-6).map((m, i) => (
               <p key={m.at + i} className="tiny" style={{ background: 'rgba(11,17,20,0.7)', padding: '3px 8px', marginTop: 2 }}>
                 <strong>{m.from}:</strong> {m.text}
@@ -392,10 +406,39 @@ export default function GameClient({
                 {Object.entries(pz.keysHeld ?? {}).length > 0 && ' · override key'}
               </p>
             ) : null}
-            <button type="button" className="btn btn-ghost btn-sm" onClick={() => send('hint.request')}>
-              H · Ask CASS
-            </button>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              {isTouch && (
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setChatOpen(true)}>
+                  Chat
+                </button>
+              )}
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => send('hint.request')}>
+                {isTouch ? 'Ask CASS' : 'H · Ask CASS'}
+              </button>
+            </div>
           </div>
+
+          {/* touch controls: joystick to walk, a big Use button as a fallback for small targets */}
+          {isTouch && phase === 'active' && !panel && (
+            <>
+              <Joystick onMove={(x, z) => worldRef.current?.setMove(x, z)} />
+              {hover && (
+                <button
+                  type="button"
+                  onClick={() => openPanel(hover)}
+                  style={{
+                    position: 'absolute', right: 26, bottom: 96,
+                    width: 84, height: 84, borderRadius: '50%',
+                    border: '2px solid var(--accent)', background: 'rgba(30,147,221,0.25)',
+                    color: '#fff', fontSize: 15, fontWeight: 600, fontFamily: 'inherit',
+                    touchAction: 'none',
+                  }}
+                >
+                  Use
+                </button>
+              )}
+            </>
+          )}
 
           {/* interaction panel */}
           {panel && phase === 'active' && (
@@ -936,6 +979,58 @@ function HoldButton({ label, onStart, onEnd }: { label: string; onStart: () => v
     >
       {held ? 'HOLDING…' : label}
     </button>
+  );
+}
+
+/** Left-thumb virtual joystick. Reports each axis −1..1; releasing snaps to rest. */
+function Joystick({ onMove }: { onMove: (x: number, z: number) => void }) {
+  const baseRef = useRef<HTMLDivElement>(null);
+  const pidRef = useRef(-1);
+  const [knob, setKnob] = useState({ x: 0, y: 0 });
+  const R = 52;
+
+  const track = (e: React.PointerEvent) => {
+    const rect = baseRef.current!.getBoundingClientRect();
+    let dx = e.clientX - (rect.left + rect.width / 2);
+    let dy = e.clientY - (rect.top + rect.height / 2);
+    const len = Math.hypot(dx, dy);
+    if (len > R) { dx = (dx / len) * R; dy = (dy / len) * R; }
+    setKnob({ x: dx, y: dy });
+    onMove(dx / R, -dy / R); // screen-up is world-forward
+  };
+
+  const release = () => {
+    pidRef.current = -1;
+    setKnob({ x: 0, y: 0 });
+    onMove(0, 0);
+  };
+
+  return (
+    <div
+      ref={baseRef}
+      onPointerDown={(e) => {
+        pidRef.current = e.pointerId;
+        (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+        track(e);
+      }}
+      onPointerMove={(e) => { if (e.pointerId === pidRef.current) track(e); }}
+      onPointerUp={release}
+      onPointerCancel={release}
+      style={{
+        position: 'absolute', left: 22, bottom: 66,
+        width: 136, height: 136, borderRadius: '50%',
+        border: '1.5px solid rgba(255,255,255,0.28)', background: 'rgba(255,255,255,0.06)',
+        touchAction: 'none', userSelect: 'none',
+      }}
+    >
+      <div style={{
+        position: 'absolute', left: '50%', top: '50%',
+        width: 58, height: 58, borderRadius: '50%',
+        background: 'rgba(255,255,255,0.32)',
+        transform: `translate(calc(-50% + ${knob.x}px), calc(-50% + ${knob.y}px))`,
+        pointerEvents: 'none',
+      }} />
+    </div>
   );
 }
 
