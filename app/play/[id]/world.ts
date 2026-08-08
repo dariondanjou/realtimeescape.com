@@ -620,8 +620,21 @@ export function createWorld(canvas: HTMLCanvasElement, events: WorldEvents): Wor
   matSpace.diffuseColor = Color3.Black();
   matSpace.disableLighting = true;
 
+  // soft round dot so stars read as points of light, not squares
+  const texStarDot = makeTex('texStarDot', 64, (ctx, s) => {
+    const g = ctx.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
+    g.addColorStop(0, 'rgba(255,255,255,1)');
+    g.addColorStop(0.35, 'rgba(235,240,255,0.85)');
+    g.addColorStop(1, 'rgba(235,240,255,0)');
+    ctx.clearRect(0, 0, s, s);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, s, s);
+  });
+  texStarDot.hasAlpha = true;
   const matStar = new StandardMaterial('matStar', scene);
-  matStar.emissiveColor = new Color3(0.9, 0.93, 1.0);
+  matStar.emissiveTexture = texStarDot;
+  matStar.opacityTexture = texStarDot;
+  matStar.diffuseColor = Color3.Black();
   matStar.disableLighting = true;
 
   const matEarth = new StandardMaterial('matEarth', scene);
@@ -636,9 +649,10 @@ export function createWorld(canvas: HTMLCanvasElement, events: WorldEvents): Wor
   matAtmo.disableLighting = true;
 
   const matPendant = new StandardMaterial('matPendant', scene);
-  matPendant.emissiveColor = Color3.FromHexString(HEX.pendant);
-  matPendant.diffuseColor = Color3.FromHexString(HEX.pendant).scale(0.4);
+  matPendant.emissiveColor = Color3.FromHexString(HEX.pendant).scale(1.35); // reads as a lit lamp, not a prop
+  matPendant.diffuseColor = Color3.Black();
   matPendant.disableLighting = true;
+  matPendant.fogEnabled = false;
 
   const matAvatar = satin('matAvatar', HEX.avatar);
   const matVisor = satin('matVisor', HEX.recess);
@@ -653,10 +667,12 @@ export function createWorld(canvas: HTMLCanvasElement, events: WorldEvents): Wor
 
   // -- lighting (budget: 11 lights total) -----------------------------------
 
+  // High-key and near-shadowless everywhere (bible 1B: "the horror is that the room
+  // looks fine"); the lounge additionally gets cold window light and lifted blacks.
   const hemi = new HemisphericLight('hemi', new Vector3(0.1, 1, 0.05), scene);
-  hemi.intensity = 0.5;
+  hemi.intensity = 0.85;
   hemi.diffuse = new Color3(0.68, 0.76, 0.78); // cool cyan-grey tint
-  hemi.groundColor = new Color3(0.16, 0.2, 0.21);
+  hemi.groundColor = new Color3(0.3, 0.36, 0.38);
 
   const coolPoint = (name: string, x: number, y: number, z: number, intensity: number, range: number): PointLight => {
     const l = new PointLight(name, new Vector3(x, y, z), scene);
@@ -667,13 +683,16 @@ export function createWorld(canvas: HTMLCanvasElement, events: WorldEvents): Wor
     return l;
   };
 
-  // Z1: three warm pendants only (created with the pendant meshes below).
+  // Z1: cold light pouring in from the hero window, warm pendants for color contrast.
+  const windowLight = coolPoint('lZ1window', 0, 2.2, 36, 0.75, 20);
+  windowLight.diffuse = new Color3(0.66, 0.8, 0.92);
+  windowLight.specular = new Color3(0.5, 0.6, 0.7);
   // Cool points elsewhere:
-  coolPoint('lZ3', -7.5, 2.7, 17, 0.35, 10);
-  coolPoint('lZ4', 7.5, 2.7, 17, 0.35, 10);
-  coolPoint('lZ6', -8, 2.7, -8, 0.35, 11);
-  coolPoint('lZ7', 8, 2.7, -8, 0.35, 11);
-  coolPoint('lZ8', 0, 2.7, -15, 0.35, 9);
+  coolPoint('lZ3', -7.5, 2.7, 17, 0.5, 10);
+  coolPoint('lZ4', 7.5, 2.7, 17, 0.5, 10);
+  coolPoint('lZ6', -8, 2.7, -8, 0.5, 11);
+  coolPoint('lZ7', 8, 2.7, -8, 0.5, 11);
+  coolPoint('lZ8', 0, 2.7, -15, 0.5, 9);
 
   // Z5: slightly lower ambient feel — two cool spotlights instead of a point wash.
   for (const sx of [-3, 3]) {
@@ -852,7 +871,7 @@ export function createWorld(canvas: HTMLCanvasElement, events: WorldEvents): Wor
     const sx = (Math.random() - 0.5) * 70;
     const sy = -6 + Math.random() * 24;
     const sz = 50.5 + Math.random() * 1.2;
-    const scale = Math.random() < 0.15 ? 1.8 : 0.7 + Math.random() * 0.8;
+    const scale = Math.random() < 0.15 ? 1.4 : 0.5 + Math.random() * 0.6;
     const m = Matrix.Scaling(scale, scale, 1).multiply(Matrix.Translation(sx, sy, sz));
     starBase.thinInstanceAdd(m, i === 99);
   }
