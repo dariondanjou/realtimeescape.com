@@ -42,3 +42,19 @@ export async function isDemoMode(): Promise<boolean> {
 export function minPlayersFor(gameMin: number, demo: boolean): number {
   return demo ? 1 : gameMin;
 }
+
+/**
+ * Whether the 3D game client can actually be entered.
+ *
+ * True only when a real game server is configured — an unset or localhost value means the
+ * Colyseus server has not been deployed, so there is nothing to join. The lobby reads this and
+ * tells the truth about it rather than presenting a start button that goes nowhere.
+ *
+ * Set NEXT_PUBLIC_GAME_SERVER_URL to the deployed wss:// address and the lobby switches over.
+ */
+export function gameClientAvailable(): boolean {
+  const url = process.env.NEXT_PUBLIC_GAME_SERVER_URL ?? '';
+  if (!url) return false;
+  if (/localhost|127\.0\.0\.1/.test(url)) return false;
+  return /^wss?:\/\//.test(url);
+}
