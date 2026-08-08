@@ -174,28 +174,46 @@ on-page rather than emailed. Pick a provider, then send: booking confirmation, i
 
 ---
 
-## STILL TO BUILD — real work, not configuration
+## THE GAME — built, playable end to end in graybox (8 August 2026)
 
-Ordered by what unblocks the most.
+The complete room now exists and is proven completable:
 
-1. **Babylon.js scene and player controller.** The 3D client does not exist yet. This is the
-   largest remaining engineering item. Classic + guided movement, focus/inspection mode,
-   contextual traversal, remote avatar interpolation.
-2. **Puzzles P1–P12.** [BURN_WINDOW_GAME_SPEC.md](./BURN_WINDOW_GAME_SPEC.md) specifies all
-   fourteen in full. P13 and P14 (the burn) are built. The other twelve are designed and
-   unimplemented.
-3. **Room package content JSON.** The schema is specified in
-   [ROOM_SCHEMA.md](./ROOM_SCHEMA.md); the Burn Window content files are stubs.
-4. **LiveKit party voice.** Architecturally decided, not integrated. Needs credentials.
-5. **Environment art.** The visual gate is passed — [BURN_WINDOW_VISUAL_BIBLE.md](./BURN_WINDOW_VISUAL_BIBLE.md)
-   has sampled palettes, lighting DNA, lens language and ready-to-use prompt blocks for both
-   hero locations. Production has not started.
-6. **CASS voice and cinematics.** Both endings, the crew reveal, the briefing.
-7. **Hint engine implementation.** Deterministic selection is fully specified in
-   [OPERATOR_AND_HINTS.md](./OPERATOR_AND_HINTS.md); the server currently returns a placeholder.
-8. **Post-game team image generation.**
-9. **Playwright multi-client E2E.** Especially the test that asserts cockpit and thruster
-   clients receive strictly disjoint data.
+- **All fourteen puzzles** run as an authoritative server state machine
+  (`rooms/burn-window/content/puzzles.mjs`): dependency graph P1→P14, seeded randomization that
+  cannot deal an impossible hand, zone-gated actions, three-tier hint ladders, CASS lines, and
+  solo scaling so one tester can walk the whole room.
+- **The 3D client** (`app/play/[id]`): Babylon graybox ship, eight zones, sliding doors driven by
+  puzzle state, the lounge built to the visual bible, interactable hover + E-to-use, remote
+  avatars, full HUD — server clock, objective, CASS subtitles with speech synthesis, team text
+  chat, hints, every puzzle panel, the cockpit burn console and station panels, debrief.
+- **Proof**: `game-server/playthrough-test.mjs` — a bot plays the entire session to ESCAPED. Plus
+  21,508 generator checks across player counts 1–8, and a manual browser session verifying the
+  world, movement, panels and P1 end to end.
+- **Asymmetry is enforced server-side**: interlock codes and the burn solution are unreadable
+  outside the flight deck (the playthrough asserts the denial).
+
+### To take it live: deploy the game server (10 minutes)
+
+1. Railway → New Project → Deploy from GitHub → `dariondanjou/realtimeescape.com`, root directory
+   at the repo root (`railway.json` handles build/start).
+2. Settings: generate a public domain; confirm app sleeping is OFF.
+3. Environment: `RESULT_WEBHOOK_URL=https://realtimeescape.com`,
+   `RESULT_WEBHOOK_SECRET=<the CRON_SECRET value>`.
+4. `vercel env add NEXT_PUBLIC_GAME_SERVER_URL production` → `wss://<railway-domain>`, redeploy.
+   The lobby switches to Enter-the-ship on its own.
+
+## STILL TO BUILD — quality, not function
+
+1. **LiveKit party voice.** The endgame is played over the built-in text chat until then;
+   voice is what the spec intends. Needs LiveKit credentials.
+2. **Environment art.** The gate is passed — [BURN_WINDOW_VISUAL_BIBLE.md](./BURN_WINDOW_VISUAL_BIBLE.md)
+   has palettes, lighting DNA and prompt blocks. The ship is deliberately graybox until the
+   puzzle pacing has been playtested (the brief's own ordering).
+3. **CASS recorded voice and cinematics.** CASS speaks via browser speech synthesis today;
+   the crew reveal and both endings deserve authored audio.
+4. **Post-game team image generation.**
+5. **Playwright multi-client E2E** — the bot playthrough covers solo; the multi-client
+   asymmetry test (cockpit and station clients receive disjoint data) should run in CI.
 
 ---
 
