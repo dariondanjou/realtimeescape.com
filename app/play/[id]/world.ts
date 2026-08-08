@@ -552,6 +552,24 @@ export function createWorld(canvas: HTMLCanvasElement, events: WorldEvents): Wor
 
     interactableByMesh.set(mesh, def.id);
     interactables.set(def.id, { mesh, mat });
+
+    // Graybox affordance: a floating name over every interactable, so players can tell
+    // the breaker panel from a storage crate before the art pass gives them silhouettes.
+    const labelTexture = new DynamicTexture(`intLabelTex_${def.id}`, { width: 512, height: 64 }, scene, false);
+    labelTexture.hasAlpha = true;
+    labelTexture.drawText(def.label, null, 44, 'bold 34px sans-serif', '#cfe3f0', 'transparent', true);
+
+    const labelMat = new StandardMaterial(`intLabelMat_${def.id}`, scene);
+    labelMat.emissiveTexture = labelTexture;
+    labelMat.opacityTexture = labelTexture;
+    labelMat.disableLighting = true;
+    labelMat.backFaceCulling = false;
+
+    const label = MeshBuilder.CreatePlane(`intLabel_${def.id}`, { width: 1.6, height: 0.2 }, scene);
+    label.material = labelMat;
+    label.position.set(def.x, def.y + 0.55, def.z);
+    label.billboardMode = Mesh.BILLBOARDMODE_ALL;
+    label.isPickable = false;
   }
 
   // -- camera ---------------------------------------------------------------

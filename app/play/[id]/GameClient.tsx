@@ -250,9 +250,12 @@ export default function GameClient({
   /* keyboard: Escape closes panel, Enter opens chat, H hints */
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // Hints must work while a puzzle panel is open — that is exactly when people want one.
+      // Only genuine text entry (the chat input) may swallow the key.
+      const typing = e.target instanceof HTMLElement && ['INPUT', 'TEXTAREA'].includes(e.target.tagName);
       if (e.key === 'Escape') { setPanel(null); setChatOpen(false); }
       if (e.key === 'Enter' && !chatOpen && !panel) { setChatOpen(true); e.preventDefault(); }
-      if ((e.key === 'h' || e.key === 'H') && !chatOpen && !panel) send('hint.request');
+      if ((e.key === 'h' || e.key === 'H') && !chatOpen && !typing) send('hint.request');
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
