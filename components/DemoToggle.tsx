@@ -5,8 +5,9 @@ import { useState } from 'react';
 /**
  * Demo-mode switch in the site header.
  *
- * A pill toggle: accent-coloured and knob-right when demo mode is on, monochrome and knob-left
- * when off, so its state is readable at a glance without reading the label.
+ * An iOS Settings-style toggle: a fully-rounded track with a white knob that slides across.
+ * Accent fill when on, neutral greyscale when off, so state reads at a glance without the label.
+ * Proportions follow the iOS switch (track roughly 1.7× its height, knob inset 2px).
  *
  * When DEMO_MODE_OPEN is set it flips in one click. Otherwise clicking opens the passkey prompt.
  */
@@ -57,49 +58,49 @@ export default function DemoToggle({ active, open = false }: { active: boolean; 
         style={{
           display: 'inline-flex',
           alignItems: 'center',
-          gap: 8,
-          padding: '4px 9px 4px 11px',
-          borderRadius: 100,
+          gap: 9,
+          padding: 0,
+          border: 0,
+          background: 'transparent',
           cursor: busy ? 'wait' : 'pointer',
           font: 'inherit',
           fontSize: 11,
           letterSpacing: '0.1em',
           textTransform: 'uppercase',
           fontFamily: 'var(--font-mono)',
-          transition: 'background 0.18s, border-color 0.18s, color 0.18s',
-          // On: accent fill with dark text. Off: monochrome — no colour at all.
-          background: active ? 'var(--accent)' : 'transparent',
-          border: `1px solid ${active ? 'var(--accent)' : 'var(--border-strong)'}`,
-          color: active ? 'var(--on-accent)' : 'var(--text-dim)',
-          opacity: busy ? 0.6 : 1,
+          color: active ? 'var(--accent-bright)' : 'var(--text-faint)',
+          transition: 'color 0.2s',
+          opacity: busy ? 0.55 : 1,
         }}
       >
         <span>demo</span>
 
-        {/* Track */}
+        {/* Track — fully rounded, accent when on, neutral grey when off */}
         <span
           aria-hidden="true"
           style={{
             position: 'relative',
-            width: 26,
-            height: 14,
-            borderRadius: 100,
+            width: 38,
+            height: 22,
+            borderRadius: 999,
             flex: 'none',
-            transition: 'background 0.18s',
-            background: active ? 'rgba(4, 32, 46, 0.5)' : 'var(--structure-cool)',
+            transition: 'background-color 0.22s ease',
+            background: active ? 'var(--accent)' : '#3a4247',
+            boxShadow: active ? 'none' : 'inset 0 0 0 1px rgba(255,255,255,0.07)',
           }}
         >
-          {/* Knob */}
+          {/* Knob — white, inset 2px, with the soft drop shadow iOS uses to lift it off the track */}
           <span
             style={{
               position: 'absolute',
               top: 2,
-              left: active ? 14 : 2,
-              width: 10,
-              height: 10,
+              left: active ? 18 : 2,
+              width: 18,
+              height: 18,
               borderRadius: '50%',
-              transition: 'left 0.18s ease, background 0.18s',
-              background: active ? '#ffffff' : 'var(--near-white)',
+              background: '#ffffff',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.4), 0 0 1px rgba(0,0,0,0.2)',
+              transition: 'left 0.22s cubic-bezier(0.32, 0.72, 0, 1)',
             }}
           />
         </span>
